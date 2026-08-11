@@ -1,7 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
-import { CommissionerTools } from '@/components/commissioner-tools'
+import { AppHeader } from '@/components/app-header'
 import { BetEntrySection } from '@/components/bet-entry-section'
 import type { Profile, Standing, Week } from '@/lib/database.types'
 import { loadProfile } from '@/lib/profile'
@@ -63,10 +64,6 @@ export function Dashboard({ userId }: DashboardProps) {
     loadDashboard()
   }, [loadDashboard])
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-  }
-
   const currentWeek = getCurrentBettingWeek(weeks)
   const futuresWeek = getFuturesWeek(weeks)
   const futuresLocked = futuresIsLocked(weeks)
@@ -103,28 +100,24 @@ export function Dashboard({ userId }: DashboardProps) {
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto w-full max-w-lg px-4 py-6">
-        <header className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black uppercase tracking-tight">The Shitty Wager</h1>
-            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-green-500">
-              NFL Betting League
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="shrink-0 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-500 hover:text-white"
-          >
-            Sign out
-          </button>
-        </header>
+        <AppHeader isCommissioner={profile?.is_commissioner ?? false} />
 
         {profile && (
           <section className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-5 shadow-[0_0_40px_rgba(34,197,94,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-              Welcome back
-            </p>
-            <p className="mt-1 text-xl font-bold">{profile.display_name}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  Welcome back
+                </p>
+                <p className="mt-1 text-xl font-bold">{profile.display_name}</p>
+              </div>
+              <Link
+                href="/profile"
+                className="shrink-0 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+              >
+                Edit team
+              </Link>
+            </div>
             <p className="mt-3 text-3xl font-black text-green-400">
               {formatMoney(profile.bankroll)}
             </p>
@@ -167,10 +160,6 @@ export function Dashboard({ userId }: DashboardProps) {
             <p className="mt-2 text-sm text-zinc-400">No open betting period configured yet.</p>
           )}
         </section>
-
-        {profile?.is_commissioner && (
-          <CommissionerTools onUpdated={loadDashboard} />
-        )}
 
         <BetEntrySection
           userId={userId}

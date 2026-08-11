@@ -1,30 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import type { Session } from '@supabase/supabase-js'
 import { Dashboard } from '@/components/dashboard'
 import { LoginForm } from '@/components/login-form'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/use-auth'
 
 export default function Home() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession)
-      setLoading(false)
-    })
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession)
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+  const { session, loading, userId } = useAuth()
 
   if (loading) {
     return (
@@ -34,9 +15,9 @@ export default function Home() {
     )
   }
 
-  if (!session) {
+  if (!session || !userId) {
     return <LoginForm />
   }
 
-  return <Dashboard userId={session.user.id} />
+  return <Dashboard userId={userId} />
 }
