@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { League } from '@/lib/database.types'
+import { loadProfile } from '@/lib/profile'
 import { supabase } from '@/lib/supabase'
 
 const STORAGE_KEY = 'tsw_active_league_id'
@@ -52,6 +53,8 @@ export function LeagueProvider({
       setLoading(false)
       return
     }
+
+    await loadProfile()
 
     const { data, error } = await supabase
       .from('league_members')
