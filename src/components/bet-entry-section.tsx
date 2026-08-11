@@ -20,6 +20,7 @@ const labelClassName =
 
 interface BetEntrySectionProps {
   userId: string
+  leagueId: string
   currentWeek: Week | null
   futuresWeek: Week | null
   futuresLocked: boolean
@@ -34,6 +35,7 @@ function sumStakes<T extends { stake: number | null }>(rows: T[]): number {
 
 export function BetEntrySection({
   userId,
+  leagueId,
   currentWeek,
   futuresWeek,
   futuresLocked,
@@ -64,6 +66,7 @@ export function BetEntrySection({
       const { data } = await supabase
         .from('bets')
         .select('*')
+        .eq('league_id', leagueId)
         .eq('player_id', userId)
         .eq('week_id', currentWeek.id)
         .neq('status', 'void')
@@ -78,6 +81,7 @@ export function BetEntrySection({
       const { data } = await supabase
         .from('futures')
         .select('*')
+        .eq('league_id', leagueId)
         .eq('player_id', userId)
         .neq('status', 'void')
         .order('created_at', { ascending: false })
@@ -88,7 +92,7 @@ export function BetEntrySection({
     }
 
     setLoadingBets(false)
-  }, [currentWeek, futuresLocked, userId])
+  }, [currentWeek, futuresLocked, leagueId, userId])
 
   useEffect(() => {
     loadBets()
@@ -141,6 +145,7 @@ export function BetEntrySection({
 
     if (mode === 'weekly' && currentWeek) {
       const { error } = await supabase.from('bets').insert({
+        league_id: leagueId,
         player_id: userId,
         week_id: currentWeek.id,
         bet_type: betType.trim() || null,
@@ -157,6 +162,7 @@ export function BetEntrySection({
       }
     } else {
       const { error } = await supabase.from('futures').insert({
+        league_id: leagueId,
         player_id: userId,
         category: category.trim() || null,
         selection: selection.trim(),

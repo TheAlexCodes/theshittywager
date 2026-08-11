@@ -9,6 +9,7 @@ export interface LeagueAllowances {
 }
 
 export interface EspnWeekRow {
+  league_id: string
   week_number: number
   phase: WeekPhase
   allowance: number
@@ -64,7 +65,8 @@ export function bettingOpensAt(firstKickoff: Date): Date {
 
 export async function buildWeeksFromEspn(
   year: number,
-  allowances: LeagueAllowances
+  allowances: LeagueAllowances,
+  leagueId: string
 ): Promise<EspnWeekRow[]> {
   const rows: EspnWeekRow[] = []
   const regularWeeks: EspnWeekResult[] = []
@@ -75,6 +77,7 @@ export async function buildWeeksFromEspn(
 
     regularWeeks.push(result)
     rows.push({
+      league_id: leagueId,
       week_number: week,
       phase: 'regular',
       allowance: allowances.weekly_allowance,
@@ -93,6 +96,7 @@ export async function buildWeeksFromEspn(
     if (!result) continue
 
     rows.push({
+      league_id: leagueId,
       week_number: round.week_number,
       phase: 'playoff',
       allowance: allowances.playoff_allowance,
@@ -106,6 +110,7 @@ export async function buildWeeksFromEspn(
     : new Date(`${year}-06-01T17:00:00Z`)
 
   rows.unshift({
+    league_id: leagueId,
     week_number: 0,
     phase: 'futures',
     allowance: allowances.futures_allowance,

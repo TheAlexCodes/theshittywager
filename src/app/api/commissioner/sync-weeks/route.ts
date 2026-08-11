@@ -3,7 +3,14 @@ import { requireCommissioner } from '@/lib/commissioner-auth'
 import { buildWeeksFromEspn } from '@/lib/espn-schedule'
 
 export async function POST(request: Request) {
-  const auth = await requireCommissioner(request)
+  const body = (await request.json()) as { league_id?: string }
+  const leagueId = body.league_id
+
+  if (!leagueId) {
+    return NextResponse.json({ error: 'league_id is required.' }, { status: 400 })
+  }
+
+  const auth = await requireCommissioner(request, leagueId)
 
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -14,7 +21,7 @@ export async function POST(request: Request) {
   const { data: settings, error: settingsError } = await supabase
     .from('league_settings')
     .select('*')
-    .eq('id', 1)
+    .eq('league_id', leagueId)
     .single()
 
   if (settingsError || !settings) {
@@ -25,14 +32,18 @@ export async function POST(request: Request) {
   }
 
   try {
-    const weeks = await buildWeeksFromEspn(settings.season_year, {
-      weekly_allowance: settings.weekly_allowance,
-      futures_allowance: settings.futures_allowance,
-      playoff_allowance: settings.playoff_allowance,
-    })
+    const weeks = await buildWeeksFromEspn(
+      settings.season_year,
+      {
+        weekly_allowance: settings.weekly_allowance,
+        futures_allowance: settings.futures_allowance,
+        playoff_allowance: settings.playoff_allowance,
+      },
+      leagueId
+    )
 
     const { error: upsertError } = await supabase.from('weeks').upsert(weeks, {
-      onConflict: 'phase,week_number',
+      onConflict: 'league_id,phase,week_number',
     })
 
     if (upsertError) {

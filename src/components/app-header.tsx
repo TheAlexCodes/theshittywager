@@ -2,15 +2,19 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useLeague } from '@/lib/league-context'
 import { supabase } from '@/lib/supabase'
 
-interface AppHeaderProps {
-  isCommissioner?: boolean
-}
-
-export function AppHeader({ isCommissioner = false }: AppHeaderProps) {
+export function AppHeader() {
   const pathname = usePathname()
   const router = useRouter()
+  const {
+    memberships,
+    activeLeagueId,
+    activeLeague,
+    isCommissioner,
+    setActiveLeagueId,
+  } = useLeague()
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -26,8 +30,10 @@ export function AppHeader({ isCommissioner = false }: AppHeaderProps) {
   return (
     <header className="mb-6">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight">The Shitty Wager</h1>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-black uppercase tracking-tight truncate">
+            {activeLeague?.name ?? 'The Shitty Wager'}
+          </h1>
           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-green-500">
             NFL Betting League
           </p>
@@ -41,7 +47,33 @@ export function AppHeader({ isCommissioner = false }: AppHeaderProps) {
         </button>
       </div>
 
-      <nav className="mt-4 flex gap-2">
+      {memberships.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <label htmlFor="league-switcher" className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            League
+          </label>
+          <select
+            id="league-switcher"
+            value={activeLeagueId ?? ''}
+            onChange={(event) => setActiveLeagueId(event.target.value)}
+            className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-green-500"
+          >
+            {memberships.map((membership) => (
+              <option key={membership.league_id} value={membership.league_id}>
+                {membership.leagues?.name ?? 'League'}
+              </option>
+            ))}
+          </select>
+          <Link
+            href="/leagues/new"
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-300 hover:border-zinc-500 hover:text-white"
+          >
+            New
+          </Link>
+        </div>
+      )}
+
+      <nav className="mt-4 flex flex-wrap gap-2">
         {links.map((link) => {
           const active = pathname === link.href
 

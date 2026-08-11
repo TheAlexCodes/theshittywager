@@ -12,42 +12,53 @@ const labelClassName =
   'mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400'
 
 interface CommissionerToolsProps {
+  leagueId: string
   onUpdated: () => void
 }
 
 type PendingBet = (Bet & { kind: 'bet'; label: string }) | (Future & { kind: 'future'; label: string })
 
-export function CommissionerTools({ onUpdated }: CommissionerToolsProps) {
+export function CommissionerTools({ leagueId, onUpdated }: CommissionerToolsProps) {
   const [settings, setSettings] = useState<LeagueSettings | null>(null)
   const [weeklyAllowance, setWeeklyAllowance] = useState('100')
   const [futuresAllowance, setFuturesAllowance] = useState('300')
   const [playoffAllowance, setPlayoffAllowance] = useState('200')
   const [seasonYear, setSeasonYear] = useState('2026')
+  const [inviteLink, setInviteLink] = useState<string | null>(null)
   const [pendingBets, setPendingBets] = useState<PendingBet[]>([])
   const [loading, setLoading] = useState(true)
   const [savingSettings, setSavingSettings] = useState(false)
   const [syncingWeeks, setSyncingWeeks] = useState(false)
+  const [generatingInvite, setGeneratingInvite] = useState(false)
   const [settlingId, setSettlingId] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const loadTools = useCallback(async () => {
     setLoading(true)
 
-    const [settingsResult, betsResult, futuresResult, profilesResult, weeksResult] =
+    const [settingsResult, betsResult, futuresResult, profilesResult, weeksResult, invitesResult] =
       await Promise.all([
-        supabase.from('league_settings').select('*').eq('id', 1).maybeSingle(),
+        supabase.from('league_settings').select('*').eq('league_id', leagueId).maybeSingle(),
         supabase
           .from('bets')
           .select('*')
+          .eq('league_id', leagueId)
           .eq('status', 'pending')
           .order('created_at', { ascending: false }),
         supabase
           .from('futures')
           .select('*')
+          .eq('league_id', leagueId)
           .eq('status', 'pending')
           .order('created_at', { ascending: false }),
         supabase.from('profiles').select('id, display_name'),
-        supabase.from('weeks').select('id, week_number, phase'),
+        supabase.from('weeks').select('id, week_number, phase').eq('league_id', leagueId),
+        supabase
+          .from('league_invites')
+          .select('token')
+          .eq('league_id', leagueId)
+          .order('created_at', { ascending: false })
+          .limit(1),
       ])
 
     const profilesById = new Map(
@@ -93,8 +104,14 @@ export function CommissionerTools({ onUpdated }: CommissionerToolsProps) {
     }
 
     setPendingBets(pending)
+
+    const token = invitesResult.data?.[0]?.token
+    if (token && typeof window !== 'undefined') {
+      setInviteLink(`${window.location.origin}/join/${token}`)
+    }
+
     setLoading(false)
-  }, [])
+  }, [leagueId])
 
   useEffect(() => {
     loadTools()
@@ -118,7 +135,7 @@ export function CommissionerTools({ onUpdated }: CommissionerToolsProps) {
       return
     }
 
-    const { error } = await supabase.from('league_settings').update(payload).eq('id', 1)
+    const { error } = await supabase.from('league_settings').update(payload).eq('league_id', leagueId)
 
     setSavingSettings(false)
 
@@ -150,7 +167,9 @@ export function CommissionerTools({ onUpdated }: CommissionerToolsProps) {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ league_id: leagueId }),
     })
 
     const body = (await response.json()) as { synced?: number; error?: string }
@@ -191,6 +210,35 @@ export function CommissionerTools({ onUpdated }: CommissionerToolsProps) {
     onUpdated()
   }
 
+  async function handleGenerateInvite() {
+    setMessage(null)
+    setGeneratingInvite(true)
+
+    const { data, error } = await supabase.rpc('create_league_invite', {
+      p_league_id: leagueId,
+    })
+
+    setGeneratingInvite(false)
+
+    if (error) {
+      setMessage({ type: 'error', text: error.message })
+      return
+    }
+
+    if (data && typeof window !== 'undefined') {
+      const link = `${window.location.origin}/join/${data}`
+      setInviteLink(link)
+      await navigator.clipboard.writeText(link)
+      setMessage({ type: 'success', text: 'Invite link copied to clipboard.' })
+    }
+  }
+
+  async function handleCopyInvite() {
+    if (!inviteLink) return
+    await navigator.clipboard.writeText(inviteLink)
+    setMessage({ type: 'success', text: 'Invite link copied.' })
+  }
+
   if (loading) {
     return (
       <section className="mb-4 rounded-2xl border border-amber-500/20 bg-zinc-900/90 p-5">
@@ -203,7 +251,7 @@ export function CommissionerTools({ onUpdated }: CommissionerToolsProps) {
     return (
       <section className="mb-4 rounded-2xl border border-amber-500/20 bg-zinc-900/90 p-5">
         <p className="text-sm text-amber-300">
-          Run `supabase/migrations/004_league_settings.sql` to enable commissioner settings.
+          Run `supabase/migrations/005_multi_league.sql` to enable commissioner settings.
         </p>
       </section>
     )
@@ -218,6 +266,37 @@ export function CommissionerTools({ onUpdated }: CommissionerToolsProps) {
         <p className="mt-1 text-sm text-zinc-400">
           Manage league budgets, sync the schedule, and settle bets.
         </p>
+      </div>
+
+      <div className="mb-5 space-y-3 border-b border-zinc-800 pb-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          Invite players
+        </p>
+        {inviteLink ? (
+          <p className="break-all rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-300">
+            {inviteLink}
+          </p>
+        ) : (
+          <p className="text-sm text-zinc-500">No invite link yet.</p>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={handleGenerateInvite}
+            disabled={generatingInvite}
+            className="rounded-lg bg-green-600 px-3 py-2 text-xs font-bold uppercase tracking-wide text-zinc-950 hover:bg-green-500 disabled:opacity-60"
+          >
+            {generatingInvite ? 'Generating…' : 'New invite link'}
+          </button>
+          <button
+            type="button"
+            onClick={handleCopyInvite}
+            disabled={!inviteLink}
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold uppercase tracking-wide text-zinc-300 hover:border-zinc-500 disabled:opacity-60"
+          >
+            Copy link
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleSaveSettings} className="space-y-4 border-b border-zinc-800 pb-5">

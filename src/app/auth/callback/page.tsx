@@ -23,6 +23,13 @@ function AuthCallbackContent() {
         return
       }
 
+      const pendingInvite = sessionStorage.getItem('pending_invite')
+      if (pendingInvite) {
+        sessionStorage.removeItem('pending_invite')
+        router.replace(`/join/${pendingInvite}`)
+        return
+      }
+
       router.replace('/')
     })
   }, [router, searchParams])
