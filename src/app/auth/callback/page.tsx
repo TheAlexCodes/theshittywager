@@ -4,34 +4,65 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
+function finishSignIn(router: ReturnType<typeof useRouter>) {
+  const pendingInvite = sessionStorage.getItem('pending_invite')
+  if (pendingInvite) {
+    sessionStorage.removeItem('pending_invite')
+    router.replace(`/join/${pendingInvite}`)
+    return
+  }
+
+  router.replace('/')
+}
+
 function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const code = searchParams.get('code')
+    const oauthError =
+      searchParams.get('error_description') ?? searchParams.get('error')
 
-    if (!code) {
-      setError('Missing login code.')
+    if (oauthError) {
+      setError(oauthError)
       return
     }
 
-    supabase.auth.exchangeCodeForSession(code).then(({ error: authError }) => {
-      if (authError) {
-        setError(authError.message)
+    const code = searchParams.get('code')
+
+    async function handleCallback() {
+      if (code) {
+        const { error: authError } = await supabase.auth.exchangeCodeForSession(code)
+
+        if (authError) {
+          setError(authError.message)
+          return
+        }
+
+        finishSignIn(router)
         return
       }
 
-      const pendingInvite = sessionStorage.getItem('pending_invite')
-      if (pendingInvite) {
-        sessionStorage.removeItem('pending_invite')
-        router.replace(`/join/${pendingInvite}`)
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        setError(sessionError.message)
         return
       }
 
-      router.replace('/')
-    })
+      if (session) {
+        finishSignIn(router)
+        return
+      }
+
+      setError('Missing login code.')
+    }
+
+    handleCallback()
   }, [router, searchParams])
 
   return (

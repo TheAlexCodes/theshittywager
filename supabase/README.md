@@ -52,8 +52,25 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
 ## Auth redirect URL
 
+In Supabase **Authentication → URL Configuration**, add:
+
 - `http://localhost:3000/auth/callback`
-- Production URL when deployed
+- Your production URL, e.g. `https://theshittywager.com/auth/callback`
+
+Set **Site URL** to your production domain (not localhost).
+
+## Google OAuth
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create OAuth credentials (Web application).
+2. Add **Authorized redirect URI**:
+   ```
+   https://<your-project-ref>.supabase.co/auth/v1/callback
+   ```
+   Find your project ref in Supabase **Project Settings → API**.
+3. In Supabase **Authentication → Providers → Google**, enable Google and paste the Client ID and Client Secret.
+4. Ensure your app redirect URLs (above) include `/auth/callback` for localhost and production.
+
+Users can sign in with **Continue with Google** on the login page. Existing profiles are linked by email via `claim_profile_by_email`.
 
 ## Commissioner tools
 
