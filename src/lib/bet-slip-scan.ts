@@ -19,7 +19,7 @@ export interface AppliedBetScan {
   oddsInput: string
 }
 
-const GEMINI_MODEL = 'gemini-2.0-flash-lite'
+const GEMINI_MODEL = 'gemini-3.1-flash-lite'
 
 export function getGeminiModelName(): string {
   return GEMINI_MODEL

@@ -51,7 +51,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
-`GEMINI_API_KEY` is **server-only** (no `NEXT_PUBLIC_` prefix). Get a free key at [Google AI Studio](https://aistudio.google.com/apikey). Bet slip scanning uses **Gemini 2.0 Flash-Lite** (~$0.00002 per scan).
+`GEMINI_API_KEY` is **server-only** (no `NEXT_PUBLIC_` prefix). Get a free key at [Google AI Studio](https://aistudio.google.com/apikey). Bet slip scanning uses **Gemini 3.1 Flash-Lite**.
 
 Add the same key in **Vercel → Project Settings → Environment Variables** for production.
 
