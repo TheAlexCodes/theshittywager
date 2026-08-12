@@ -13,7 +13,8 @@ interface BetSlipScannerProps {
 }
 
 export function BetSlipScanner({ mode, disabled = false, onApply }: BetSlipScannerProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const libraryInputRef = useRef<HTMLInputElement>(null)
   const [scanning, setScanning] = useState(false)
   const [preview, setPreview] = useState<ScannedBetSlip | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -83,24 +84,41 @@ export function BetSlipScanner({ mode, disabled = false, onApply }: BetSlipScann
             Scan bet slip
           </p>
           <p className="mt-1 text-sm text-zinc-500">
-            Take a photo or upload a screenshot from DraftKings, FanDuel, etc.
+            Take a photo or pick one from your camera roll — DraftKings, FanDuel, etc.
           </p>
         </div>
-        <button
-          type="button"
-          disabled={disabled || scanning}
-          onClick={() => inputRef.current?.click()}
-          className="shrink-0 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-green-400 hover:bg-green-500/20 disabled:opacity-60"
-        >
-          {scanning ? 'Scanning…' : 'Scan'}
-        </button>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            disabled={disabled || scanning}
+            onClick={() => cameraInputRef.current?.click()}
+            className="rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-green-400 hover:bg-green-500/20 disabled:opacity-60"
+          >
+            {scanning ? 'Scanning…' : 'Camera'}
+          </button>
+          <button
+            type="button"
+            disabled={disabled || scanning}
+            onClick={() => libraryInputRef.current?.click()}
+            className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-bold uppercase tracking-wide text-zinc-300 hover:border-zinc-500 disabled:opacity-60"
+          >
+            Photo library
+          </button>
+        </div>
       </div>
 
       <input
-        ref={inputRef}
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <input
+        ref={libraryInputRef}
+        type="file"
+        accept="image/*"
         className="hidden"
         onChange={handleFileChange}
       />
