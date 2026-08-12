@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import type { Bet, Future, LeagueSettings } from '@/lib/database.types'
+import { LeagueRosterManager } from '@/components/league-roster-manager'
 import { formatAmericanOdds, formatMoney } from '@/lib/odds'
 import { supabase } from '@/lib/supabase'
 
@@ -13,12 +14,13 @@ const labelClassName =
 
 interface CommissionerToolsProps {
   leagueId: string
+  currentUserId: string
   onUpdated: () => void
 }
 
 type PendingBet = (Bet & { kind: 'bet'; label: string }) | (Future & { kind: 'future'; label: string })
 
-export function CommissionerTools({ leagueId, onUpdated }: CommissionerToolsProps) {
+export function CommissionerTools({ leagueId, currentUserId, onUpdated }: CommissionerToolsProps) {
   const [settings, setSettings] = useState<LeagueSettings | null>(null)
   const [weeklyAllowance, setWeeklyAllowance] = useState('100')
   const [futuresAllowance, setFuturesAllowance] = useState('300')
@@ -264,8 +266,19 @@ export function CommissionerTools({ leagueId, onUpdated }: CommissionerToolsProp
           Commissioner tools
         </p>
         <p className="mt-1 text-sm text-zinc-400">
-          Manage league budgets, sync the schedule, and settle bets.
+          Manage players, budgets, invites, schedule sync, and bet settlement.
         </p>
+      </div>
+
+      <div className="mb-5 space-y-3 border-b border-zinc-800 pb-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          Players & teams
+        </p>
+        <LeagueRosterManager
+          leagueId={leagueId}
+          currentUserId={currentUserId}
+          onUpdated={onUpdated}
+        />
       </div>
 
       <div className="mb-5 space-y-3 border-b border-zinc-800 pb-5">

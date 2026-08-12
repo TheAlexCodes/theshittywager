@@ -72,6 +72,8 @@ Set **Site URL** to your production domain (not localhost).
 
 Users can sign in with **Continue with Google** on the login page. Existing profiles are linked by email via `claim_profile_by_email`.
 
+Auth uses `@supabase/ssr` with cookie-based PKCE. The callback is handled server-side at `/auth/callback`, then the client finishes at `/auth/complete`.
+
 ## Commissioner tools
 
 Run migration **`004_league_settings.sql`** to enable budget settings.

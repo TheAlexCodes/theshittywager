@@ -4,6 +4,10 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { AppHeader } from '@/components/app-header'
 import { BetEntrySection } from '@/components/bet-entry-section'
+import {
+  hasSeenRulesIntro,
+  LeagueRulesDialog,
+} from '@/components/league-rules-dialog'
 import type { Profile, Standing, Week } from '@/lib/database.types'
 import { useLeague } from '@/lib/league-context'
 import { loadProfile } from '@/lib/profile'
@@ -34,6 +38,13 @@ export function Dashboard({ userId }: DashboardProps) {
   const [weeks, setWeeks] = useState<Week[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [welcomeOpen, setWelcomeOpen] = useState(false)
+
+  useEffect(() => {
+    if (!hasSeenRulesIntro()) {
+      setWelcomeOpen(true)
+    }
+  }, [])
 
   const loadDashboard = useCallback(async () => {
     if (!activeLeagueId) {
@@ -284,6 +295,12 @@ export function Dashboard({ userId }: DashboardProps) {
           )}
         </section>
       </div>
+
+      <LeagueRulesDialog
+        open={welcomeOpen}
+        onClose={() => setWelcomeOpen(false)}
+        variant="welcome"
+      />
     </main>
   )
 }

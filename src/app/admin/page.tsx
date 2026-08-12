@@ -8,8 +8,8 @@ import { useLeague } from '@/lib/league-context'
 import { useAuth } from '@/lib/use-auth'
 
 export default function AdminPage() {
-  const { session, loading: authLoading } = useAuth()
-  const { activeLeagueId, isCommissioner, loading: leagueLoading } = useLeague()
+  const { session, loading: authLoading, userId } = useAuth()
+  const { activeLeagueId, isCommissioner, loading: leagueLoading, refreshMemberships } = useLeague()
 
   if (authLoading || leagueLoading) {
     return (
@@ -61,11 +61,17 @@ export default function AdminPage() {
         <div className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">Admin</p>
           <p className="mt-1 text-sm text-zinc-400">
-            Commissioner controls for budgets, invites, schedule sync, and bet settlement.
+            Commissioner controls for players, budgets, invites, schedule sync, and bet settlement.
           </p>
         </div>
 
-        <CommissionerTools leagueId={activeLeagueId} onUpdated={() => {}} />
+        {userId && (
+          <CommissionerTools
+            leagueId={activeLeagueId}
+            currentUserId={userId}
+            onUpdated={refreshMemberships}
+          />
+        )}
       </div>
     </main>
   )

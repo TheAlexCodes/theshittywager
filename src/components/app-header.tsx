@@ -2,12 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { LeagueRulesDialog } from '@/components/league-rules-dialog'
 import { useLeague } from '@/lib/league-context'
 import { supabase } from '@/lib/supabase'
 
 export function AppHeader() {
   const pathname = usePathname()
   const router = useRouter()
+  const [rulesOpen, setRulesOpen] = useState(false)
   const {
     memberships,
     activeLeagueId,
@@ -38,13 +41,23 @@ export function AppHeader() {
             NFL Betting League
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="shrink-0 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-500 hover:text-white"
-        >
-          Sign out
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setRulesOpen(true)}
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+            aria-label="How it works"
+          >
+            Info
+          </button>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
 
       {memberships.length > 0 && (
@@ -94,6 +107,8 @@ export function AppHeader() {
           )
         })}
       </nav>
+
+      <LeagueRulesDialog open={rulesOpen} onClose={() => setRulesOpen(false)} />
     </header>
   )
 }

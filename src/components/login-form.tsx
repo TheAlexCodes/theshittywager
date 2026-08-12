@@ -1,7 +1,11 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { getAuthCallbackUrl } from '@/lib/auth-redirect'
+import {
+  hasSeenRulesIntro,
+  LeagueRulesDialog,
+} from '@/components/league-rules-dialog'
 import { supabase } from '@/lib/supabase'
 
 function GoogleIcon() {
@@ -34,6 +38,14 @@ export function LoginForm() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null
   )
+  const [rulesOpen, setRulesOpen] = useState(false)
+  const [welcomeOpen, setWelcomeOpen] = useState(false)
+
+  useEffect(() => {
+    if (!hasSeenRulesIntro()) {
+      setWelcomeOpen(true)
+    }
+  }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -90,6 +102,13 @@ export function LoginForm() {
             <p className="mt-2 text-sm font-semibold uppercase tracking-[0.2em] text-green-500">
               NFL Betting League
             </p>
+            <button
+              type="button"
+              onClick={() => setRulesOpen(true)}
+              className="mt-4 text-xs font-semibold uppercase tracking-wider text-zinc-400 underline-offset-4 hover:text-green-400 hover:underline"
+            >
+              How it works
+            </button>
           </div>
 
           <div className="space-y-4">
@@ -154,6 +173,13 @@ export function LoginForm() {
           )}
         </div>
       </div>
+
+      <LeagueRulesDialog
+        open={welcomeOpen}
+        onClose={() => setWelcomeOpen(false)}
+        variant="welcome"
+      />
+      <LeagueRulesDialog open={rulesOpen} onClose={() => setRulesOpen(false)} />
     </main>
   )
 }
