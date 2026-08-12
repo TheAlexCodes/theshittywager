@@ -30,6 +30,8 @@ export function Dashboard({ userId }: DashboardProps) {
     activeLeagueId,
     activeMembership,
     isCommissioner,
+    canManageActiveLeague,
+    isAdministrator,
     loading: leagueLoading,
     memberships,
   } = useLeague()
@@ -175,11 +177,15 @@ export function Dashboard({ userId }: DashboardProps) {
             </div>
             <p className="mt-3 text-3xl font-black text-green-400">{formatMoney(bankroll)}</p>
             <p className="mt-1 text-xs text-zinc-500">Play-money bankroll</p>
-            {isCommissioner && (
+            {isAdministrator ? (
+              <span className="mt-3 inline-block rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-purple-300">
+                Administrator
+              </span>
+            ) : isCommissioner ? (
               <span className="mt-3 inline-block rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-green-400">
                 Commissioner
               </span>
-            )}
+            ) : null}
           </section>
         )}
 
@@ -214,7 +220,7 @@ export function Dashboard({ userId }: DashboardProps) {
           )}
         </section>
 
-        {activeLeagueId && (
+        {activeLeagueId && activeMembership?.is_member !== false && (
           <BetEntrySection
             userId={userId}
             leagueId={activeLeagueId}

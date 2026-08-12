@@ -15,7 +15,7 @@ export function AppHeader() {
     memberships,
     activeLeagueId,
     activeLeague,
-    isCommissioner,
+    canManageActiveLeague,
     setActiveLeagueId,
   } = useLeague()
 
@@ -27,7 +27,7 @@ export function AppHeader() {
   const links = [
     { href: '/', label: 'League' },
     { href: '/profile', label: 'Profile' },
-    ...(isCommissioner ? [{ href: '/admin', label: 'Admin' }] : []),
+    ...(canManageActiveLeague ? [{ href: '/admin', label: 'Admin' }] : []),
   ]
 
   return (

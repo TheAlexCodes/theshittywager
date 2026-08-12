@@ -32,6 +32,20 @@ export async function requireCommissioner(request: Request, leagueId?: string) {
     return { error: 'Invalid session.', status: 401 as const }
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('is_administrator')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profileError) {
+    return { error: profileError.message, status: 500 as const }
+  }
+
+  if (profile?.is_administrator) {
+    return { supabase, user }
+  }
+
   if (leagueId) {
     const { data: membership, error: membershipError } = await supabase
       .from('league_members')

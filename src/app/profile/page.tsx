@@ -12,7 +12,7 @@ import type { Profile } from '@/lib/database.types'
 
 export default function ProfilePage() {
   const { session, loading: authLoading, userId } = useAuth()
-  const { activeMembership, isCommissioner } = useLeague()
+  const { activeMembership, isCommissioner, isAdministrator } = useLeague()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -76,7 +76,12 @@ export default function ProfilePage() {
           )}
           <p className="mt-1 text-xs text-zinc-500">Play-money bankroll in active league</p>
           <p className="mt-4 text-sm text-zinc-400">{profile.email}</p>
-          {isCommissioner && (
+          {isAdministrator && (
+            <span className="mt-3 inline-block rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-purple-300">
+              Administrator
+            </span>
+          )}
+          {!isAdministrator && isCommissioner && (
             <span className="mt-3 inline-block rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-green-400">
               Commissioner
             </span>

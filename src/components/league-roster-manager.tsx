@@ -13,17 +13,20 @@ interface RosterMember {
   displayName: string
   bankroll: number
   isCommissioner: boolean
+  isAdministrator: boolean
 }
 
 interface LeagueRosterManagerProps {
   leagueId: string
   currentUserId: string
+  isPlatformAdministrator?: boolean
   onUpdated: () => void
 }
 
 export function LeagueRosterManager({
   leagueId,
   currentUserId,
+  isPlatformAdministrator = false,
   onUpdated,
 }: LeagueRosterManagerProps) {
   const [members, setMembers] = useState<RosterMember[]>([])
@@ -37,7 +40,7 @@ export function LeagueRosterManager({
 
     const { data, error } = await supabase
       .from('league_members')
-      .select('user_id, bankroll, is_commissioner, profiles(email, display_name)')
+      .select('user_id, bankroll, is_commissioner, profiles(email, display_name, is_administrator)')
       .eq('league_id', leagueId)
       .order('joined_at', { ascending: true })
 
@@ -53,6 +56,7 @@ export function LeagueRosterManager({
       displayName: row.profiles?.display_name ?? 'Player',
       bankroll: row.bankroll,
       isCommissioner: row.is_commissioner,
+      isAdministrator: row.profiles?.is_administrator ?? false,
     }))
 
     setMembers(rows)
@@ -117,6 +121,30 @@ export function LeagueRosterManager({
     onUpdated()
   }
 
+  async function toggleAdministrator(userId: string, nextValue: boolean) {
+    setSavingUserId(userId)
+    setMessage(null)
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_administrator: nextValue })
+      .eq('id', userId)
+
+    setSavingUserId(null)
+
+    if (error) {
+      setMessage({ type: 'error', text: error.message })
+      return
+    }
+
+    setMessage({
+      type: 'success',
+      text: nextValue ? 'Platform administrator access granted.' : 'Platform administrator access removed.',
+    })
+    await loadRoster()
+    onUpdated()
+  }
+
   if (loading) {
     return <p className="text-sm text-zinc-400">Loading roster…</p>
   }
@@ -127,6 +155,7 @@ export function LeagueRosterManager({
         const saving = savingUserId === member.userId
         const nameChanged = draftNames[member.userId]?.trim() !== member.displayName
         const isSelf = member.userId === currentUserId
+        const commissionerCount = members.filter((row) => row.isCommissioner).length
 
         return (
           <div
@@ -143,11 +172,18 @@ export function LeagueRosterManager({
                   )}
                 </p>
               </div>
-              {member.isCommissioner && (
-                <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
-                  Commissioner
-                </span>
-              )}
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                {member.isAdministrator && (
+                  <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-300">
+                    Administrator
+                  </span>
+                )}
+                {member.isCommissioner && (
+                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                    Commissioner
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="mt-3 space-y-3">
@@ -187,12 +223,28 @@ export function LeagueRosterManager({
                 <input
                   type="checkbox"
                   checked={member.isCommissioner}
-                  disabled={saving || (member.isCommissioner && isSelf && members.filter((row) => row.isCommissioner).length === 1)}
+                  disabled={
+                    saving ||
+                    (member.isCommissioner && isSelf && commissionerCount === 1)
+                  }
                   onChange={(event) => toggleCommissioner(member.userId, event.target.checked)}
                   className="h-4 w-4 rounded border-zinc-600 bg-zinc-950 text-green-600 focus:ring-green-500/30"
                 />
-                Commissioner access
+                League commissioner
               </label>
+
+              {isPlatformAdministrator && (
+                <label className="flex items-center gap-2 text-sm text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={member.isAdministrator}
+                    disabled={saving || (member.isAdministrator && isSelf)}
+                    onChange={(event) => toggleAdministrator(member.userId, event.target.checked)}
+                    className="h-4 w-4 rounded border-zinc-600 bg-zinc-950 text-purple-500 focus:ring-purple-500/30"
+                  />
+                  Platform administrator
+                </label>
+              )}
             </div>
           </div>
         )

@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/use-auth'
 
 export default function AdminPage() {
   const { session, loading: authLoading, userId } = useAuth()
-  const { activeLeagueId, isCommissioner, loading: leagueLoading, refreshMemberships } = useLeague()
+  const { activeLeagueId, canManageActiveLeague, loading: leagueLoading, refreshMemberships, isAdministrator } = useLeague()
 
   if (authLoading || leagueLoading) {
     return (
@@ -34,13 +34,13 @@ export default function AdminPage() {
     )
   }
 
-  if (!isCommissioner) {
+  if (!canManageActiveLeague) {
     return (
       <main className="min-h-screen bg-zinc-950 text-white">
         <div className="mx-auto w-full max-w-lg px-4 py-6">
           <AppHeader />
           <section className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-center">
-            <p className="text-red-400">Admin access is limited to this league&apos;s commissioner.</p>
+            <p className="text-red-400">Admin access is limited to commissioners and platform administrators.</p>
             <Link
               href="/"
               className="mt-4 inline-block rounded-lg bg-zinc-800 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700"
@@ -69,6 +69,7 @@ export default function AdminPage() {
           <CommissionerTools
             leagueId={activeLeagueId}
             currentUserId={userId}
+            isPlatformAdministrator={isAdministrator}
             onUpdated={refreshMemberships}
           />
         )}

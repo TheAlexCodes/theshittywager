@@ -10,6 +10,7 @@ export interface Database {
           email: string
           display_name: string
           is_commissioner: boolean | null
+          is_administrator: boolean
           bankroll: number
           created_at: string | null
         }
@@ -18,12 +19,14 @@ export interface Database {
           email: string
           display_name: string
           is_commissioner?: boolean | null
+          is_administrator?: boolean
           bankroll?: number
           created_at?: string | null
         }
         Update: {
           email?: string
           display_name?: string
+          is_administrator?: boolean
         }
         Relationships: []
       }
@@ -338,6 +341,14 @@ export interface Database {
       }
       is_commissioner: {
         Args: Record<string, never>
+        Returns: boolean
+      }
+      is_administrator: {
+        Args: Record<string, never>
+        Returns: boolean
+      }
+      can_access_league: {
+        Args: { p_league_id: string }
         Returns: boolean
       }
       is_league_commissioner: {

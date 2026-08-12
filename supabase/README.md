@@ -74,9 +74,24 @@ Users can sign in with **Continue with Google** on the login page. Existing prof
 
 Auth uses `@supabase/ssr` with cookie-based PKCE. The callback is handled server-side at `/auth/callback`, then the client finishes at `/auth/complete`.
 
-## Commissioner tools
+Grant the first platform administrator manually in Supabase:
 
-Run migration **`004_league_settings.sql`** to enable budget settings.
+```sql
+update public.profiles
+set is_administrator = true
+where lower(email) = lower('you@example.com');
+```
+
+Run migration **`008_platform_administrators.sql`** for the full administrator model.
+
+## Access levels
+
+| Role | Scope |
+|---|---|
+| Player | Own bets and profile within joined leagues |
+| League commissioner | Manage one league (budgets, invites, roster, settlement) |
+| Platform administrator | Commissioner access to **every** league on the site |
+
 
 Commissioners see a tools panel in the app to:
 

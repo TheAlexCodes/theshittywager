@@ -15,12 +15,18 @@ const labelClassName =
 interface CommissionerToolsProps {
   leagueId: string
   currentUserId: string
+  isPlatformAdministrator?: boolean
   onUpdated: () => void
 }
 
 type PendingBet = (Bet & { kind: 'bet'; label: string }) | (Future & { kind: 'future'; label: string })
 
-export function CommissionerTools({ leagueId, currentUserId, onUpdated }: CommissionerToolsProps) {
+export function CommissionerTools({
+  leagueId,
+  currentUserId,
+  isPlatformAdministrator = false,
+  onUpdated,
+}: CommissionerToolsProps) {
   const [settings, setSettings] = useState<LeagueSettings | null>(null)
   const [weeklyAllowance, setWeeklyAllowance] = useState('100')
   const [futuresAllowance, setFuturesAllowance] = useState('300')
@@ -277,6 +283,7 @@ export function CommissionerTools({ leagueId, currentUserId, onUpdated }: Commis
         <LeagueRosterManager
           leagueId={leagueId}
           currentUserId={currentUserId}
+          isPlatformAdministrator={isPlatformAdministrator}
           onUpdated={onUpdated}
         />
       </div>

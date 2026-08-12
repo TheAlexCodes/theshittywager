@@ -19,6 +19,7 @@ export interface LeagueMembership {
   league_id: string
   bankroll: number
   is_commissioner: boolean
+  is_member: boolean
   leagues: League | null
 }
 
@@ -27,7 +28,9 @@ interface LeagueContextValue {
   activeLeagueId: string | null
   activeMembership: LeagueMembership | null
   activeLeague: League | null
+  isAdministrator: boolean
   isCommissioner: boolean
+  canManageActiveLeague: boolean
   loading: boolean
   setActiveLeagueId: (leagueId: string) => void
   refreshMemberships: () => Promise<void>
@@ -44,17 +47,21 @@ export function LeagueProvider({
 }) {
   const [memberships, setMemberships] = useState<LeagueMembership[]>([])
   const [activeLeagueId, setActiveLeagueIdState] = useState<string | null>(null)
+  const [isAdministrator, setIsAdministrator] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const refreshMemberships = useCallback(async () => {
     if (!userId) {
       setMemberships([])
       setActiveLeagueIdState(null)
+      setIsAdministrator(false)
       setLoading(false)
       return
     }
 
-    await loadProfile()
+    const profileResult = await loadProfile()
+    const administrator = profileResult.profile?.is_administrator ?? false
+    setIsAdministrator(administrator)
 
     const { data, error } = await supabase
       .from('league_members')
@@ -67,12 +74,40 @@ export function LeagueProvider({
       return
     }
 
-    const rows: LeagueMembership[] = (data ?? []).map((row) => ({
+    const memberRows: LeagueMembership[] = (data ?? []).map((row) => ({
       league_id: row.league_id,
       bankroll: row.bankroll,
       is_commissioner: row.is_commissioner,
+      is_member: true,
       leagues: row.leagues,
     }))
+
+    let rows = memberRows
+
+    if (administrator) {
+      const { data: allLeagues, error: leaguesError } = await supabase
+        .from('leagues')
+        .select('id, name, created_by, created_at')
+        .order('created_at', { ascending: true })
+
+      if (!leaguesError && allLeagues) {
+        const memberByLeagueId = new Map(memberRows.map((row) => [row.league_id, row]))
+
+        rows = allLeagues.map((league) => {
+          const existing = memberByLeagueId.get(league.id)
+          if (existing) return existing
+
+          return {
+            league_id: league.id,
+            bankroll: 0,
+            is_commissioner: false,
+            is_member: false,
+            leagues: league,
+          }
+        })
+      }
+    }
+
     setMemberships(rows)
 
     const storedId =
@@ -106,13 +141,20 @@ export function LeagueProvider({
     [memberships, activeLeagueId]
   )
 
+  const canManageActiveLeague = useMemo(
+    () => isAdministrator || (activeMembership?.is_commissioner ?? false),
+    [isAdministrator, activeMembership]
+  )
+
   const value = useMemo(
     () => ({
       memberships,
       activeLeagueId,
       activeMembership,
       activeLeague: activeMembership?.leagues ?? null,
+      isAdministrator,
       isCommissioner: activeMembership?.is_commissioner ?? false,
+      canManageActiveLeague,
       loading,
       setActiveLeagueId,
       refreshMemberships,
@@ -121,6 +163,8 @@ export function LeagueProvider({
       memberships,
       activeLeagueId,
       activeMembership,
+      isAdministrator,
+      canManageActiveLeague,
       loading,
       setActiveLeagueId,
       refreshMemberships,
