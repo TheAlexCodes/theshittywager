@@ -37,6 +37,22 @@ export function remainingAllowance(allowance: number, staked: number): number {
   return Math.max(0, allowance - staked)
 }
 
+export function sumStakes<T extends { stake: number | null }>(rows: T[]): number {
+  return rows.reduce((total, row) => total + (row.stake ?? 0), 0)
+}
+
+export function aggregateStakesByPlayer(
+  rows: Array<{ player_id: string; stake: number | null }>
+): Record<string, number> {
+  const map: Record<string, number> = {}
+
+  for (const row of rows) {
+    map[row.player_id] = (map[row.player_id] ?? 0) + (row.stake ?? 0)
+  }
+
+  return map
+}
+
 export function parseAmericanOdds(input: string): number | null {
   const trimmed = input.trim()
   if (!trimmed) return null

@@ -10,6 +10,7 @@ import {
   formatMoney,
   parseAmericanOdds,
   remainingAllowance,
+  sumStakes,
 } from '@/lib/odds'
 import { supabase } from '@/lib/supabase'
 import { formatWeekLabel } from '@/lib/weeks'
@@ -30,10 +31,6 @@ interface BetEntrySectionProps {
 }
 
 type EntryMode = 'weekly' | 'futures'
-
-function sumStakes<T extends { stake: number | null }>(rows: T[]): number {
-  return rows.reduce((total, row) => total + (row.stake ?? 0), 0)
-}
 
 export function BetEntrySection({
   userId,

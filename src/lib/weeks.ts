@@ -46,3 +46,47 @@ export function getFuturesWeek(weeks: Week[]): Week | null {
 export function futuresIsLocked(weeks: Week[]): boolean {
   return weeks.some((week) => week.phase === 'regular' && isWeekOpen(week))
 }
+
+export interface ActiveBettingPeriod {
+  mode: 'weekly' | 'futures'
+  week: Week
+  closesAt: Date | null
+}
+
+export function getWeeklyWindowClosesAt(weeks: Week[], currentWeek: Week): Date | null {
+  const sorted = [...weeks]
+    .filter((week) => week.phase !== 'futures')
+    .sort((a, b) => a.week_number - b.week_number)
+
+  const index = sorted.findIndex((week) => week.id === currentWeek.id)
+  const nextWeek = index >= 0 ? sorted[index + 1] : undefined
+
+  return nextWeek ? new Date(nextWeek.reveal_at) : null
+}
+
+export function getFuturesWindowClosesAt(weeks: Week[]): Date | null {
+  const weekOne = weeks.find((week) => week.phase === 'regular' && week.week_number === 1)
+  return weekOne ? new Date(weekOne.reveal_at) : null
+}
+
+export function getActiveBettingPeriod(weeks: Week[]): ActiveBettingPeriod | null {
+  const currentWeek = getCurrentBettingWeek(weeks)
+  if (currentWeek) {
+    return {
+      mode: 'weekly',
+      week: currentWeek,
+      closesAt: getWeeklyWindowClosesAt(weeks, currentWeek),
+    }
+  }
+
+  const futuresWeek = getFuturesWeek(weeks)
+  if (futuresWeek && !futuresIsLocked(weeks)) {
+    return {
+      mode: 'futures',
+      week: futuresWeek,
+      closesAt: getFuturesWindowClosesAt(weeks),
+    }
+  }
+
+  return null
+}

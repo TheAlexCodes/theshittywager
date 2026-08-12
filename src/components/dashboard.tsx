@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { AppHeader } from '@/components/app-header'
 import { BetEntrySection } from '@/components/bet-entry-section'
+import { BettingWindowCountdown } from '@/components/betting-window-countdown'
 import {
   hasSeenRulesIntro,
   LeagueRulesDialog,
@@ -11,12 +12,13 @@ import {
 import type { Profile, Standing, Week } from '@/lib/database.types'
 import { useLeague } from '@/lib/league-context'
 import { loadProfile } from '@/lib/profile'
-import { formatMoney } from '@/lib/odds'
+import { aggregateStakesByPlayer, formatMoney, remainingAllowance } from '@/lib/odds'
 import { supabase } from '@/lib/supabase'
 import {
   formatPhaseLabel,
   formatWeekLabel,
   futuresIsLocked,
+  getActiveBettingPeriod,
   getCurrentBettingWeek,
   getFuturesWeek,
 } from '@/lib/weeks'
@@ -38,6 +40,7 @@ export function Dashboard({ userId }: DashboardProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [standings, setStandings] = useState<Standing[]>([])
   const [weeks, setWeeks] = useState<Week[]>([])
+  const [playerStaked, setPlayerStaked] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [welcomeOpen, setWelcomeOpen] = useState(false)
@@ -88,9 +91,45 @@ export function Dashboard({ userId }: DashboardProps) {
       return
     }
 
+    const leagueWeeks = weeksResult.data
+    const activePeriod = getActiveBettingPeriod(leagueWeeks)
+    let stakedByPlayer: Record<string, number> = {}
+
+    if (activePeriod?.mode === 'weekly') {
+      const stakesResult = await supabase
+        .from('bets')
+        .select('player_id, stake')
+        .eq('league_id', activeLeagueId)
+        .eq('week_id', activePeriod.week.id)
+        .neq('status', 'void')
+
+      if (stakesResult.error) {
+        setError(stakesResult.error.message)
+        setLoading(false)
+        return
+      }
+
+      stakedByPlayer = aggregateStakesByPlayer(stakesResult.data ?? [])
+    } else if (activePeriod?.mode === 'futures') {
+      const stakesResult = await supabase
+        .from('futures')
+        .select('player_id, stake')
+        .eq('league_id', activeLeagueId)
+        .neq('status', 'void')
+
+      if (stakesResult.error) {
+        setError(stakesResult.error.message)
+        setLoading(false)
+        return
+      }
+
+      stakedByPlayer = aggregateStakesByPlayer(stakesResult.data ?? [])
+    }
+
     setProfile(profileResult.profile)
     setStandings(standingsResult.data)
-    setWeeks(weeksResult.data)
+    setWeeks(leagueWeeks)
+    setPlayerStaked(stakedByPlayer)
     setLoading(false)
   }, [activeLeagueId, userId])
 
@@ -104,6 +143,7 @@ export function Dashboard({ userId }: DashboardProps) {
   const currentWeek = getCurrentBettingWeek(weeks)
   const futuresWeek = getFuturesWeek(weeks)
   const futuresLocked = futuresIsLocked(weeks)
+  const activePeriod = getActiveBettingPeriod(weeks)
   const leader = standings[0]
   const bankroll = activeMembership?.bankroll ?? 0
 
@@ -203,6 +243,9 @@ export function Dashboard({ userId }: DashboardProps) {
                   {formatMoney(currentWeek.allowance)}
                 </span>
               </p>
+              {activePeriod?.closesAt && (
+                <BettingWindowCountdown closesAt={activePeriod.closesAt} />
+              )}
             </div>
           ) : !futuresLocked && futuresWeek ? (
             <div className="mt-2">
@@ -214,6 +257,9 @@ export function Dashboard({ userId }: DashboardProps) {
                   {formatMoney(futuresWeek.allowance)}
                 </span>
               </p>
+              {activePeriod?.closesAt && (
+                <BettingWindowCountdown closesAt={activePeriod.closesAt} />
+              )}
             </div>
           ) : (
             <p className="mt-2 text-sm text-zinc-400">No open betting period configured yet.</p>
@@ -246,6 +292,13 @@ export function Dashboard({ userId }: DashboardProps) {
             <p className="text-xs text-zinc-500">{standings.length} players</p>
           </div>
 
+          {activePeriod && (
+            <p className="mb-3 text-xs text-zinc-500">
+              Remaining budget for {activePeriod.mode === 'weekly' ? 'this week' : 'futures'}.
+              Individual bets stay hidden until the window closes.
+            </p>
+          )}
+
           {standings.length === 0 ? (
             <p className="text-sm text-zinc-400">No players in this league yet.</p>
           ) : (
@@ -253,6 +306,11 @@ export function Dashboard({ userId }: DashboardProps) {
               {standings.map((entry) => {
                 const isCurrentUser = entry.player_id === userId
                 const isLeader = entry.standing_rank === 1
+                const allowance = activePeriod?.week.allowance ?? 0
+                const staked = playerStaked[entry.player_id] ?? 0
+                const remaining = activePeriod
+                  ? remainingAllowance(allowance, staked)
+                  : null
 
                 return (
                   <li
@@ -285,15 +343,26 @@ export function Dashboard({ userId }: DashboardProps) {
                             Commissioner
                           </p>
                         )}
+                        {remaining !== null && (
+                          <p
+                            className={`text-xs ${
+                              remaining > 0 ? 'text-amber-400' : 'text-zinc-500'
+                            }`}
+                          >
+                            {formatMoney(remaining)} left to bet
+                          </p>
+                        )}
                       </div>
                     </div>
-                    <p
-                      className={`shrink-0 pl-3 text-sm font-bold ${
-                        entry.bankroll >= 0 ? 'text-green-400' : 'text-red-400'
-                      }`}
-                    >
-                      {formatMoney(entry.bankroll)}
-                    </p>
+                    <div className="shrink-0 pl-3 text-right">
+                      <p
+                        className={`text-sm font-bold ${
+                          entry.bankroll >= 0 ? 'text-green-400' : 'text-red-400'
+                        }`}
+                      >
+                        {formatMoney(entry.bankroll)}
+                      </p>
+                    </div>
                   </li>
                 )
               })}
