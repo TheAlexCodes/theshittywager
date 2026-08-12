@@ -1,6 +1,8 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
+import type { AppliedBetScan, ScannedBetSlip } from '@/lib/bet-slip-scan'
+import { BetSlipScanner } from '@/components/bet-slip-scanner'
 import type { Bet, Future, Week } from '@/lib/database.types'
 import {
   americanOddsPayout,
@@ -190,6 +192,21 @@ export function BetEntrySection({
 
   const activeBets = mode === 'weekly' ? weeklyBets : futureBets
 
+  function handleScanApply(values: AppliedBetScan, scan: ScannedBetSlip) {
+    setBetType(values.betType)
+    setCategory(values.category)
+    setSelection(values.selection)
+    setStake(values.stake)
+    setOddsInput(values.oddsInput)
+    setMessage({
+      type: 'success',
+      text:
+        scan.confidence === 'low'
+          ? 'Slip scanned — please double-check the values before placing.'
+          : 'Slip scanned — review the form and place your bet.',
+    })
+  }
+
   return (
     <section className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -210,6 +227,14 @@ export function BetEntrySection({
             {formatMoney(staked)} / {formatMoney(allowance)} staked
           </p>
         </div>
+      </div>
+
+      <div className="mb-4">
+        <BetSlipScanner
+          mode={mode}
+          disabled={left <= 0}
+          onApply={handleScanApply}
+        />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

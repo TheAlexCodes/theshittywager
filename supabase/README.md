@@ -48,7 +48,16 @@ Futures allowance comes from the `weeks` row where `phase = 'futures'` (defaults
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+GEMINI_API_KEY=your_gemini_api_key
 ```
+
+`GEMINI_API_KEY` is **server-only** (no `NEXT_PUBLIC_` prefix). Get a free key at [Google AI Studio](https://aistudio.google.com/apikey). Bet slip scanning uses **Gemini 2.0 Flash-Lite** (~$0.00002 per scan).
+
+Add the same key in **Vercel → Project Settings → Environment Variables** for production.
+
+## Bet slip scanning
+
+Players can tap **Scan** on the bet form to photograph or upload a sportsbook slip. The app sends the image to Gemini and prefills selection, odds, and stake for review.
 
 ## Auth redirect URL
 
