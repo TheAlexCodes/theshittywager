@@ -93,6 +93,8 @@ where lower(email) = lower('you@example.com');
 
 Run migration **`008_platform_administrators.sql`** for the full administrator model.
 
+Run migration **`010_delete_league.sql`** to enable platform administrators to delete leagues from the Admin center.
+
 ## Access levels
 
 | Role | Scope |

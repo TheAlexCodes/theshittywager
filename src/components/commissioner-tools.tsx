@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import type { Bet, Future, LeagueSettings } from '@/lib/database.types'
+import { DeleteLeagueSection } from '@/components/delete-league-section'
 import { LeagueRosterManager } from '@/components/league-roster-manager'
 import { formatAmericanOdds, formatMoney } from '@/lib/odds'
 import { supabase } from '@/lib/supabase'
@@ -14,18 +15,22 @@ const labelClassName =
 
 interface CommissionerToolsProps {
   leagueId: string
+  leagueName: string
   currentUserId: string
   isPlatformAdministrator?: boolean
   onUpdated: () => void
+  onLeagueDeleted?: () => void
 }
 
 type PendingBet = (Bet & { kind: 'bet'; label: string }) | (Future & { kind: 'future'; label: string })
 
 export function CommissionerTools({
   leagueId,
+  leagueName,
   currentUserId,
   isPlatformAdministrator = false,
   onUpdated,
+  onLeagueDeleted,
 }: CommissionerToolsProps) {
   const [settings, setSettings] = useState<LeagueSettings | null>(null)
   const [weeklyAllowance, setWeeklyAllowance] = useState('100')
@@ -34,6 +39,7 @@ export function CommissionerTools({
   const [seasonYear, setSeasonYear] = useState('2026')
   const [inviteLink, setInviteLink] = useState<string | null>(null)
   const [pendingBets, setPendingBets] = useState<PendingBet[]>([])
+  const [memberCount, setMemberCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [savingSettings, setSavingSettings] = useState(false)
   const [syncingWeeks, setSyncingWeeks] = useState(false)
@@ -44,7 +50,7 @@ export function CommissionerTools({
   const loadTools = useCallback(async () => {
     setLoading(true)
 
-    const [settingsResult, betsResult, futuresResult, profilesResult, weeksResult, invitesResult] =
+    const [settingsResult, betsResult, futuresResult, profilesResult, weeksResult, invitesResult, membersResult] =
       await Promise.all([
         supabase.from('league_settings').select('*').eq('league_id', leagueId).maybeSingle(),
         supabase
@@ -67,6 +73,10 @@ export function CommissionerTools({
           .eq('league_id', leagueId)
           .order('created_at', { ascending: false })
           .limit(1),
+        supabase
+          .from('league_members')
+          .select('id', { count: 'exact', head: true })
+          .eq('league_id', leagueId),
       ])
 
     const profilesById = new Map(
@@ -112,6 +122,7 @@ export function CommissionerTools({
     }
 
     setPendingBets(pending)
+    setMemberCount(membersResult.count ?? 0)
 
     const token = invitesResult.data?.[0]?.token
     if (token && typeof window !== 'undefined') {
@@ -479,6 +490,16 @@ export function CommissionerTools({
         >
           {message.text}
         </p>
+      )}
+
+      {isPlatformAdministrator && onLeagueDeleted && (
+        <DeleteLeagueSection
+          leagueId={leagueId}
+          leagueName={leagueName}
+          memberCount={memberCount}
+          pendingBetCount={pendingBets.length}
+          onDeleted={onLeagueDeleted}
+        />
       )}
     </section>
   )

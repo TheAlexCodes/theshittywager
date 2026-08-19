@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { AppHeader } from '@/components/app-header'
 import { CommissionerTools } from '@/components/commissioner-tools'
 import { LoginForm } from '@/components/login-form'
@@ -8,8 +9,17 @@ import { useLeague } from '@/lib/league-context'
 import { useAuth } from '@/lib/use-auth'
 
 export default function AdminPage() {
+  const router = useRouter()
   const { session, loading: authLoading, userId } = useAuth()
-  const { activeLeagueId, canManageActiveLeague, loading: leagueLoading, refreshMemberships, isAdministrator } = useLeague()
+  const {
+    activeLeagueId,
+    activeLeague,
+    canManageActiveLeague,
+    loading: leagueLoading,
+    refreshMemberships,
+    isAdministrator,
+    memberships,
+  } = useLeague()
 
   if (authLoading || leagueLoading) {
     return (
@@ -53,6 +63,16 @@ export default function AdminPage() {
     )
   }
 
+  const leagueName =
+    activeLeague?.name ??
+    memberships.find((membership) => membership.league_id === activeLeagueId)?.leagues?.name ??
+    'League'
+
+  async function handleLeagueDeleted() {
+    await refreshMemberships()
+    router.push('/')
+  }
+
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto w-full max-w-lg px-4 py-6">
@@ -68,9 +88,11 @@ export default function AdminPage() {
         {userId && (
           <CommissionerTools
             leagueId={activeLeagueId}
+            leagueName={leagueName}
             currentUserId={userId}
             isPlatformAdministrator={isAdministrator}
             onUpdated={refreshMemberships}
+            onLeagueDeleted={isAdministrator ? handleLeagueDeleted : undefined}
           />
         )}
       </div>

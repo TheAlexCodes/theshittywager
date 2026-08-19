@@ -379,6 +379,10 @@ export interface Database {
         Args: { p_league_id: string }
         Returns: string
       }
+      delete_league: {
+        Args: { p_league_id: string }
+        Returns: undefined
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
