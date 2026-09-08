@@ -1,8 +1,9 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import type { Bet, Future, LeagueSettings } from '@/lib/database.types'
+import type { Bet, Future, LeagueSettings, Week } from '@/lib/database.types'
 import { DeleteLeagueSection } from '@/components/delete-league-section'
+import { FuturesWindowControls } from '@/components/futures-window-controls'
 import { LeagueRosterManager } from '@/components/league-roster-manager'
 import { PendingBetSettlement } from '@/components/pending-bet-settlement'
 import { supabase } from '@/lib/supabase'
@@ -33,6 +34,7 @@ export function CommissionerTools({
   onLeagueDeleted,
 }: CommissionerToolsProps) {
   const [settings, setSettings] = useState<LeagueSettings | null>(null)
+  const [weeks, setWeeks] = useState<Week[]>([])
   const [weeklyAllowance, setWeeklyAllowance] = useState('100')
   const [futuresAllowance, setFuturesAllowance] = useState('300')
   const [playoffAllowance, setPlayoffAllowance] = useState('200')
@@ -66,7 +68,7 @@ export function CommissionerTools({
           .eq('status', 'pending')
           .order('created_at', { ascending: false }),
         supabase.from('profiles').select('id, display_name'),
-        supabase.from('weeks').select('id, week_number, phase').eq('league_id', leagueId),
+        supabase.from('weeks').select('*').eq('league_id', leagueId).order('week_number'),
         supabase
           .from('league_invites')
           .select('token')
@@ -123,6 +125,7 @@ export function CommissionerTools({
 
     setPendingBets(pending)
     setMemberCount(membersResult.count ?? 0)
+    setWeeks(weeksResult.data ?? [])
 
     const token = invitesResult.data?.[0]?.token
     if (token && typeof window !== 'undefined') {
@@ -332,6 +335,18 @@ export function CommissionerTools({
           </button>
         </div>
       </div>
+
+      {settings && weeks.length > 0 && (
+        <FuturesWindowControls
+          leagueId={leagueId}
+          settings={settings}
+          weeks={weeks}
+          onUpdated={() => {
+            loadTools()
+            onUpdated()
+          }}
+        />
+      )}
 
       <form onSubmit={handleSaveSettings} className="space-y-4 border-b border-zinc-800 pb-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">

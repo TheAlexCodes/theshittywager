@@ -1,4 +1,12 @@
 import type { Week, WeekPhase } from '@/lib/database.types'
+import {
+  futuresIsLocked as futuresIsLockedWithSettings,
+  getFuturesWindowClosesAt as getFuturesWindowClosesAtWithSettings,
+  type FuturesWindowSettings,
+} from '@/lib/futures-window'
+
+export type { FuturesWindowSettings } from '@/lib/futures-window'
+export { getFuturesWindow } from '@/lib/futures-window'
 
 export function formatWeekLabel(week: Week): string {
   if (week.phase === 'futures') {
@@ -43,8 +51,11 @@ export function getFuturesWeek(weeks: Week[]): Week | null {
   return weeks.find((week) => week.phase === 'futures') ?? null
 }
 
-export function futuresIsLocked(weeks: Week[]): boolean {
-  return weeks.some((week) => week.phase === 'regular' && isWeekOpen(week))
+export function futuresIsLocked(
+  weeks: Week[],
+  settings?: FuturesWindowSettings | null
+): boolean {
+  return futuresIsLockedWithSettings(weeks, settings)
 }
 
 export interface ActiveBettingPeriod {
@@ -64,12 +75,17 @@ export function getWeeklyWindowClosesAt(weeks: Week[], currentWeek: Week): Date 
   return nextWeek ? new Date(nextWeek.reveal_at) : null
 }
 
-export function getFuturesWindowClosesAt(weeks: Week[]): Date | null {
-  const weekOne = weeks.find((week) => week.phase === 'regular' && week.week_number === 1)
-  return weekOne ? new Date(weekOne.reveal_at) : null
+export function getFuturesWindowClosesAt(
+  weeks: Week[],
+  settings?: FuturesWindowSettings | null
+): Date | null {
+  return getFuturesWindowClosesAtWithSettings(weeks, settings)
 }
 
-export function getActiveBettingPeriod(weeks: Week[]): ActiveBettingPeriod | null {
+export function getActiveBettingPeriod(
+  weeks: Week[],
+  settings?: FuturesWindowSettings | null
+): ActiveBettingPeriod | null {
   const currentWeek = getCurrentBettingWeek(weeks)
   if (currentWeek) {
     return {
@@ -80,11 +96,11 @@ export function getActiveBettingPeriod(weeks: Week[]): ActiveBettingPeriod | nul
   }
 
   const futuresWeek = getFuturesWeek(weeks)
-  if (futuresWeek && !futuresIsLocked(weeks)) {
+  if (futuresWeek && !futuresIsLocked(weeks, settings)) {
     return {
       mode: 'futures',
       week: futuresWeek,
-      closesAt: getFuturesWindowClosesAt(weeks),
+      closesAt: getFuturesWindowClosesAt(weeks, settings),
     }
   }
 

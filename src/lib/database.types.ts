@@ -138,6 +138,8 @@ export interface Database {
           futures_allowance: number
           playoff_allowance: number
           season_year: number
+          futures_opens_at: string | null
+          futures_closes_at: string | null
           updated_at: string
         }
         Insert: {
@@ -146,6 +148,8 @@ export interface Database {
           futures_allowance?: number
           playoff_allowance?: number
           season_year?: number
+          futures_opens_at?: string | null
+          futures_closes_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -153,6 +157,8 @@ export interface Database {
           futures_allowance?: number
           playoff_allowance?: number
           season_year?: number
+          futures_opens_at?: string | null
+          futures_closes_at?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -28,6 +28,7 @@ interface BetEntrySectionProps {
   currentWeek: Week | null
   futuresWeek: Week | null
   futuresLocked: boolean
+  forcedMode?: 'weekly' | 'futures'
   onBetPlaced: () => void
 }
 
@@ -39,13 +40,15 @@ export function BetEntrySection({
   currentWeek,
   futuresWeek,
   futuresLocked,
+  forcedMode,
   onBetPlaced,
 }: BetEntrySectionProps) {
-  const mode: EntryMode | null = currentWeek
-    ? 'weekly'
-    : !futuresLocked && futuresWeek
-      ? 'futures'
-      : null
+  const mode: EntryMode | null = forcedMode
+    ?? (currentWeek
+      ? 'weekly'
+      : !futuresLocked && futuresWeek
+        ? 'futures'
+        : null)
 
   const [weeklyBets, setWeeklyBets] = useState<Bet[]>([])
   const [futureBets, setFutureBets] = useState<Future[]>([])
@@ -77,7 +80,21 @@ export function BetEntrySection({
       setWeeklyBets([])
     }
 
-    if (!futuresLocked) {
+    if (forcedMode === 'futures') {
+      if (!futuresLocked) {
+        const { data } = await supabase
+          .from('futures')
+          .select('*')
+          .eq('league_id', leagueId)
+          .eq('player_id', userId)
+          .neq('status', 'void')
+          .order('created_at', { ascending: false })
+
+        setFutureBets(data ?? [])
+      } else {
+        setFutureBets([])
+      }
+    } else if (!currentWeek && !futuresLocked) {
       const { data } = await supabase
         .from('futures')
         .select('*')
@@ -92,7 +109,7 @@ export function BetEntrySection({
     }
 
     setLoadingBets(false)
-  }, [currentWeek, futuresLocked, leagueId, userId])
+  }, [currentWeek, forcedMode, futuresLocked, leagueId, userId])
 
   useEffect(() => {
     loadBets()

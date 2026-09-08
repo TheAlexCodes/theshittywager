@@ -9,7 +9,7 @@ import {
   hasSeenRulesIntro,
   LeagueRulesDialog,
 } from '@/components/league-rules-dialog'
-import type { Profile, Standing, Week } from '@/lib/database.types'
+import type { Profile, Standing, Week, LeagueSettings } from '@/lib/database.types'
 import { useLeague } from '@/lib/league-context'
 import { loadProfile } from '@/lib/profile'
 import { aggregateStakesByPlayer, formatMoney, remainingAllowance } from '@/lib/odds'
@@ -40,6 +40,7 @@ export function Dashboard({ userId }: DashboardProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [standings, setStandings] = useState<Standing[]>([])
   const [weeks, setWeeks] = useState<Week[]>([])
+  const [leagueSettings, setLeagueSettings] = useState<LeagueSettings | null>(null)
   const [playerStaked, setPlayerStaked] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -59,7 +60,7 @@ export function Dashboard({ userId }: DashboardProps) {
 
     setError(null)
 
-    const [profileResult, standingsResult, weeksResult] = await Promise.all([
+    const [profileResult, standingsResult, weeksResult, settingsResult] = await Promise.all([
       loadProfile(),
       supabase
         .from('standings')
@@ -71,6 +72,11 @@ export function Dashboard({ userId }: DashboardProps) {
         .select('*')
         .eq('league_id', activeLeagueId)
         .order('week_number', { ascending: true }),
+      supabase
+        .from('league_settings')
+        .select('*')
+        .eq('league_id', activeLeagueId)
+        .maybeSingle(),
     ])
 
     if (profileResult.error) {
@@ -92,7 +98,13 @@ export function Dashboard({ userId }: DashboardProps) {
     }
 
     const leagueWeeks = weeksResult.data
-    const activePeriod = getActiveBettingPeriod(leagueWeeks)
+    const windowSettings = settingsResult.data
+      ? {
+          futures_opens_at: settingsResult.data.futures_opens_at,
+          futures_closes_at: settingsResult.data.futures_closes_at,
+        }
+      : null
+    const activePeriod = getActiveBettingPeriod(leagueWeeks, windowSettings)
     let stakedByPlayer: Record<string, number> = {}
 
     if (activePeriod?.mode === 'weekly') {
@@ -129,6 +141,7 @@ export function Dashboard({ userId }: DashboardProps) {
     setProfile(profileResult.profile)
     setStandings(standingsResult.data)
     setWeeks(leagueWeeks)
+    setLeagueSettings(settingsResult.data)
     setPlayerStaked(stakedByPlayer)
     setLoading(false)
   }, [activeLeagueId, userId])
@@ -140,10 +153,16 @@ export function Dashboard({ userId }: DashboardProps) {
     }
   }, [loadDashboard, leagueLoading])
 
+  const futuresWindowSettings = leagueSettings
+    ? {
+        futures_opens_at: leagueSettings.futures_opens_at,
+        futures_closes_at: leagueSettings.futures_closes_at,
+      }
+    : null
   const currentWeek = getCurrentBettingWeek(weeks)
   const futuresWeek = getFuturesWeek(weeks)
-  const futuresLocked = futuresIsLocked(weeks)
-  const activePeriod = getActiveBettingPeriod(weeks)
+  const futuresLocked = futuresIsLocked(weeks, futuresWindowSettings)
+  const activePeriod = getActiveBettingPeriod(weeks, futuresWindowSettings)
   const leader = standings[0]
   const bankroll = activeMembership?.bankroll ?? 0
 

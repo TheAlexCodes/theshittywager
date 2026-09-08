@@ -23,3 +23,14 @@ export function formatWindowCloseDate(target: Date): string {
     timeZoneName: 'short',
   }).format(target)
 }
+
+export function toDatetimeLocalValue(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+export function parseDatetimeLocalValue(value: string): Date | null {
+  if (!value.trim()) return null
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}

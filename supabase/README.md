@@ -95,6 +95,8 @@ Run migration **`008_platform_administrators.sql`** for the full administrator m
 
 Run migration **`010_delete_league.sql`** to enable platform administrators to delete leagues from the Admin center.
 
+Run migration **`011_futures_window.sql`** to let commissioners set custom futures open/close times.
+
 ## Access levels
 
 | Role | Scope |

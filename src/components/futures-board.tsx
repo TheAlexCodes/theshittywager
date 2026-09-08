@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppHeader } from '@/components/app-header'
+import { BetEntrySection } from '@/components/bet-entry-section'
 import { BetStatusBadge } from '@/components/bet-status-badge'
-import type { Future, Week } from '@/lib/database.types'
+import { BettingWindowCountdown } from '@/components/betting-window-countdown'
+import type { Future, LeagueSettings, Week } from '@/lib/database.types'
+import { getFuturesWindow } from '@/lib/futures-window'
 import { useLeague } from '@/lib/league-context'
 import {
   formatAmericanOdds,
@@ -12,7 +15,7 @@ import {
   sumStakes,
 } from '@/lib/odds'
 import { supabase } from '@/lib/supabase'
-import { futuresIsLocked, getFuturesWeek } from '@/lib/weeks'
+import { futuresIsLocked, getCurrentBettingWeek, getFuturesWeek } from '@/lib/weeks'
 
 interface FuturesBoardProps {
   userId: string
@@ -27,6 +30,7 @@ type FuturesFilter = 'all' | 'mine'
 export function FuturesBoard({ userId }: FuturesBoardProps) {
   const { activeLeagueId, activeMembership, memberships } = useLeague()
   const [weeks, setWeeks] = useState<Week[]>([])
+  const [leagueSettings, setLeagueSettings] = useState<LeagueSettings | null>(null)
   const [futures, setFutures] = useState<FutureRow[]>([])
   const [filter, setFilter] = useState<FuturesFilter>('all')
   const [loading, setLoading] = useState(true)
@@ -41,7 +45,7 @@ export function FuturesBoard({ userId }: FuturesBoardProps) {
     setError(null)
     setLoading(true)
 
-    const [weeksResult, futuresResult, profilesResult] = await Promise.all([
+    const [weeksResult, futuresResult, profilesResult, settingsResult] = await Promise.all([
       supabase
         .from('weeks')
         .select('*')
@@ -54,6 +58,11 @@ export function FuturesBoard({ userId }: FuturesBoardProps) {
         .neq('status', 'void')
         .order('created_at', { ascending: false }),
       supabase.from('profiles').select('id, display_name'),
+      supabase
+        .from('league_settings')
+        .select('*')
+        .eq('league_id', activeLeagueId)
+        .maybeSingle(),
     ])
 
     if (weeksResult.error) {
@@ -73,6 +82,7 @@ export function FuturesBoard({ userId }: FuturesBoardProps) {
     )
 
     setWeeks(weeksResult.data ?? [])
+    setLeagueSettings(settingsResult.data)
     setFutures(
       (futuresResult.data ?? []).map((future) => ({
         ...future,
@@ -86,8 +96,16 @@ export function FuturesBoard({ userId }: FuturesBoardProps) {
     loadFutures()
   }, [loadFutures])
 
+  const futuresWindowSettings = leagueSettings
+    ? {
+        futures_opens_at: leagueSettings.futures_opens_at,
+        futures_closes_at: leagueSettings.futures_closes_at,
+      }
+    : null
   const futuresWeek = getFuturesWeek(weeks)
-  const futuresLocked = futuresIsLocked(weeks)
+  const futuresLocked = futuresIsLocked(weeks, futuresWindowSettings)
+  const futuresWindow = getFuturesWindow(weeks, futuresWindowSettings)
+  const currentWeek = getCurrentBettingWeek(weeks)
   const allowance = futuresWeek?.allowance ?? 0
 
   const myFutures = useMemo(
@@ -184,13 +202,32 @@ export function FuturesBoard({ userId }: FuturesBoardProps) {
             </div>
           )}
 
-          {!futuresLocked && allowance > 0 && (
+          {!futuresLocked && futuresWindow?.closesAt && (
+            <BettingWindowCountdown closesAt={futuresWindow.closesAt} />
+          )}
+
+          {futuresLocked && (
             <p className="mt-3 text-xs text-zinc-500">
-              Futures window open — {formatMoney(allowance)} allowance per player. Place bets from
-              the League tab.
+              Futures betting is closed. Ask your commissioner to reopen the window if you still
+              need to place bets.
             </p>
           )}
         </section>
+
+        {activeLeagueId &&
+          activeMembership?.is_member !== false &&
+          !futuresLocked &&
+          futuresWeek && (
+            <BetEntrySection
+              userId={userId}
+              leagueId={activeLeagueId}
+              currentWeek={currentWeek}
+              futuresWeek={futuresWeek}
+              futuresLocked={futuresLocked}
+              forcedMode="futures"
+              onBetPlaced={loadFutures}
+            />
+          )}
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/90 p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
