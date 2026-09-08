@@ -20,7 +20,7 @@ export const LEAGUE_RULES: RuleSection[] = [
   },
   {
     title: 'Regular season',
-    body: 'Each week you receive a fresh allowance (default $100). Use it or lose it — unspent weekly money does not roll over. Place bets on spreads, totals, moneylines, or props using American odds.',
+    body: 'Each week you receive a fresh allowance (default $100). Use it or lose it — unspent weekly money does not roll over. The window stays open through Thursday or other mid-week games and closes when the first Saturday or Sunday game kicks off.',
   },
   {
     title: 'Playoffs',

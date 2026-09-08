@@ -179,6 +179,7 @@ export interface Database {
           phase: WeekPhase
           allowance: number
           reveal_at: string
+          betting_closes_at: string | null
         }
         Insert: {
           id?: number
@@ -187,12 +188,14 @@ export interface Database {
           phase: WeekPhase
           allowance: number
           reveal_at: string
+          betting_closes_at?: string | null
         }
         Update: {
           week_number?: number
           phase?: WeekPhase
           allowance?: number
           reveal_at?: string
+          betting_closes_at?: string | null
         }
         Relationships: [
           {

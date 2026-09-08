@@ -14,10 +14,27 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')
 const YEAR = 2026
 const BETTING_OPENS_DAYS_BEFORE = 4
+const NFL_SCHEDULE_TIMEZONE = 'America/New_York'
 
 const REGULAR_ALLOWANCE = 100
 const PLAYOFF_ALLOWANCE = 200
 const FUTURES_ALLOWANCE = 300
+
+function isWeekendKickoff(kickoff) {
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: NFL_SCHEDULE_TIMEZONE,
+    weekday: 'short',
+  }).format(kickoff)
+
+  return weekday === 'Sat' || weekday === 'Sun'
+}
+
+function bettingClosesAtFromKickoffs(kickoffs) {
+  const sorted = [...kickoffs].sort((a, b) => a.getTime() - b.getTime())
+  const firstWeekend = sorted.find(isWeekendKickoff)
+  if (firstWeekend) return firstWeekend
+  return sorted[0] ?? null
+}
 
 async function fetchWeek(seasonType, week) {
   const url = new URL(
@@ -33,20 +50,21 @@ async function fetchWeek(seasonType, week) {
   }
 
   const data = await response.json()
-  const dates = (data.events ?? [])
+  const kickoffs = (data.events ?? [])
     .map((event) => new Date(event.date))
     .filter((date) => !Number.isNaN(date.getTime()))
     .sort((a, b) => a.getTime() - b.getTime())
 
-  if (dates.length === 0) {
+  if (kickoffs.length === 0) {
     return null
   }
 
   return {
     espnWeek: data.week?.number ?? week,
-    firstKickoff: dates[0],
-    lastKickoff: dates[dates.length - 1],
-    gameCount: dates.length,
+    firstKickoff: kickoffs[0],
+    lastKickoff: kickoffs[kickoffs.length - 1],
+    gameCount: kickoffs.length,
+    kickoffs,
   }
 }
 
@@ -76,12 +94,14 @@ async function main() {
       continue
     }
     regularWeeks.push(result)
+    const closesAt = bettingClosesAtFromKickoffs(result.kickoffs)
     rows.push({
       week_number: week,
       phase: 'regular',
       allowance: REGULAR_ALLOWANCE,
       reveal_at: bettingOpensAt(result.firstKickoff),
-      note: `Week ${week}: first game ${result.firstKickoff.toISOString()}`,
+      betting_closes_at: closesAt,
+      note: `Week ${week}: first game ${result.firstKickoff.toISOString()}, closes ${closesAt?.toISOString() ?? 'n/a'}`,
     })
   }
 
@@ -97,12 +117,14 @@ async function main() {
       console.warn(`No playoff data for ${round.label}`)
       continue
     }
+    const closesAt = bettingClosesAtFromKickoffs(result.kickoffs)
     rows.push({
       week_number: round.week_number,
       phase: 'playoff',
       allowance: PLAYOFF_ALLOWANCE,
       reveal_at: bettingOpensAt(result.firstKickoff),
-      note: `${round.label}: first game ${result.firstKickoff.toISOString()}`,
+      betting_closes_at: closesAt,
+      note: `${round.label}: first game ${result.firstKickoff.toISOString()}, closes ${closesAt?.toISOString() ?? 'n/a'}`,
     })
   }
 
@@ -116,6 +138,7 @@ async function main() {
     phase: 'futures',
     allowance: FUTURES_ALLOWANCE,
     reveal_at: futuresOpens,
+    betting_closes_at: null,
     note: 'Futures window opens ~90 days before Week 1',
   })
 
@@ -126,16 +149,20 @@ async function main() {
     `-- Generated: ${new Date().toISOString()}`,
     `-- Source: https://www.espn.com/nfl/schedule/_/year/${YEAR}/seasontype/2`,
     '-- reveal_at = betting opens (4 days before first kickoff of the week)',
+    '-- betting_closes_at = first Saturday/Sunday kickoff (ET)',
     '',
     'delete from public.weeks;',
     '',
-    'insert into public.weeks (week_number, phase, allowance, reveal_at)',
+    'insert into public.weeks (week_number, phase, allowance, reveal_at, betting_closes_at)',
     'values',
   ]
 
   const valueLines = rows.map((row, index) => {
     const suffix = index === rows.length - 1 ? ';' : ','
-    return `  (${row.week_number}, ${sqlValue(row.phase)}, ${row.allowance}, ${sqlValue(toSqlTimestamp(row.reveal_at))})${suffix} -- ${row.note}`
+    const closesSql = row.betting_closes_at
+      ? sqlValue(toSqlTimestamp(row.betting_closes_at))
+      : 'null'
+    return `  (${row.week_number}, ${sqlValue(row.phase)}, ${row.allowance}, ${sqlValue(toSqlTimestamp(row.reveal_at))}, ${closesSql})${suffix} -- ${row.note}`
   })
 
   lines.push(...valueLines)
@@ -149,7 +176,7 @@ async function main() {
   console.log(`Wrote ${rows.length} weeks to ${outputPath}`)
   for (const row of rows) {
     console.log(
-      `  ${row.phase.padEnd(8)} week ${String(row.week_number).padStart(2)} opens ${row.reveal_at.toISOString()}`
+      `  ${row.phase.padEnd(8)} week ${String(row.week_number).padStart(2)} opens ${row.reveal_at.toISOString()} closes ${row.betting_closes_at?.toISOString() ?? 'n/a'}`
     )
   }
 }

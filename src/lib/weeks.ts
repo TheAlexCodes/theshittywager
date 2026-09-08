@@ -32,12 +32,19 @@ export function formatPhaseLabel(phase: WeekPhase): string {
 }
 
 export function isWeekOpen(week: Week): boolean {
-  return new Date(week.reveal_at) <= new Date()
+  return isWeekBettingOpen(week)
+}
+
+export function isWeekBettingOpen(week: Week): boolean {
+  const now = new Date()
+  if (new Date(week.reveal_at) > now) return false
+  if (week.betting_closes_at && new Date(week.betting_closes_at) <= now) return false
+  return true
 }
 
 export function getCurrentBettingWeek(weeks: Week[]): Week | null {
   const openWeeks = weeks
-    .filter((week) => week.phase !== 'futures' && isWeekOpen(week))
+    .filter((week) => week.phase !== 'futures' && isWeekBettingOpen(week))
     .sort(
       (a, b) =>
         new Date(b.reveal_at).getTime() - new Date(a.reveal_at).getTime() ||
@@ -65,6 +72,10 @@ export interface ActiveBettingPeriod {
 }
 
 export function getWeeklyWindowClosesAt(weeks: Week[], currentWeek: Week): Date | null {
+  if (currentWeek.betting_closes_at) {
+    return new Date(currentWeek.betting_closes_at)
+  }
+
   const sorted = [...weeks]
     .filter((week) => week.phase !== 'futures')
     .sort((a, b) => a.week_number - b.week_number)

@@ -97,6 +97,8 @@ Run migration **`010_delete_league.sql`** to enable platform administrators to d
 
 Run migration **`011_futures_window.sql`** to let commissioners set custom futures open/close times.
 
+Run migration **`012_weekly_betting_closes.sql`** so weekly windows close at the first weekend kickoff. Re-sync weeks from ESPN after applying.
+
 ## Access levels
 
 | Role | Scope |

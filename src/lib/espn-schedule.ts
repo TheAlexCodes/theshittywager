@@ -1,6 +1,11 @@
 import type { WeekPhase } from '@/lib/database.types'
+import {
+  BETTING_OPENS_DAYS_BEFORE,
+  bettingClosesAtFromKickoffs,
+  bettingOpensAt,
+} from '@/lib/nfl-schedule'
 
-export const BETTING_OPENS_DAYS_BEFORE = 4
+export { BETTING_OPENS_DAYS_BEFORE, bettingOpensAt } from '@/lib/nfl-schedule'
 
 export interface LeagueAllowances {
   weekly_allowance: number
@@ -14,12 +19,14 @@ export interface EspnWeekRow {
   phase: WeekPhase
   allowance: number
   reveal_at: string
+  betting_closes_at: string | null
 }
 
 interface EspnWeekResult {
   firstKickoff: Date
   lastKickoff: Date
   gameCount: number
+  kickoffs: Date[]
 }
 
 async function fetchEspnWeek(
@@ -40,27 +47,40 @@ async function fetchEspnWeek(
   }
 
   const data = await response.json()
-  const dates = (data.events ?? [])
+  const kickoffs = (data.events ?? [])
     .map((event: { date?: string }) => new Date(event.date ?? ''))
     .filter((date: Date) => !Number.isNaN(date.getTime()))
     .sort((a: Date, b: Date) => a.getTime() - b.getTime())
 
-  if (dates.length === 0) {
+  if (kickoffs.length === 0) {
     return null
   }
 
   return {
-    firstKickoff: dates[0],
-    lastKickoff: dates[dates.length - 1],
-    gameCount: dates.length,
+    firstKickoff: kickoffs[0],
+    lastKickoff: kickoffs[kickoffs.length - 1],
+    gameCount: kickoffs.length,
+    kickoffs,
   }
 }
 
-export function bettingOpensAt(firstKickoff: Date): Date {
-  const opens = new Date(firstKickoff)
-  opens.setUTCDate(opens.getUTCDate() - BETTING_OPENS_DAYS_BEFORE)
-  opens.setUTCHours(17, 0, 0, 0)
-  return opens
+function buildWeekRow(
+  leagueId: string,
+  weekNumber: number,
+  phase: WeekPhase,
+  allowance: number,
+  result: EspnWeekResult
+): EspnWeekRow {
+  const closesAt = bettingClosesAtFromKickoffs(result.kickoffs)
+
+  return {
+    league_id: leagueId,
+    week_number: weekNumber,
+    phase,
+    allowance,
+    reveal_at: bettingOpensAt(result.firstKickoff).toISOString(),
+    betting_closes_at: closesAt?.toISOString() ?? null,
+  }
 }
 
 export async function buildWeeksFromEspn(
@@ -76,13 +96,9 @@ export async function buildWeeksFromEspn(
     if (!result) continue
 
     regularWeeks.push(result)
-    rows.push({
-      league_id: leagueId,
-      week_number: week,
-      phase: 'regular',
-      allowance: allowances.weekly_allowance,
-      reveal_at: bettingOpensAt(result.firstKickoff).toISOString(),
-    })
+    rows.push(
+      buildWeekRow(leagueId, week, 'regular', allowances.weekly_allowance, result)
+    )
   }
 
   const playoffMap = [
@@ -95,13 +111,9 @@ export async function buildWeeksFromEspn(
     const result = await fetchEspnWeek(3, round.espnWeek, year)
     if (!result) continue
 
-    rows.push({
-      league_id: leagueId,
-      week_number: round.week_number,
-      phase: 'playoff',
-      allowance: allowances.playoff_allowance,
-      reveal_at: bettingOpensAt(result.firstKickoff).toISOString(),
-    })
+    rows.push(
+      buildWeekRow(leagueId, round.week_number, 'playoff', allowances.playoff_allowance, result)
+    )
   }
 
   const firstRegularGame = regularWeeks[0]?.firstKickoff
@@ -115,6 +127,7 @@ export async function buildWeeksFromEspn(
     phase: 'futures',
     allowance: allowances.futures_allowance,
     reveal_at: futuresOpens.toISOString(),
+    betting_closes_at: null,
   })
 
   return rows.sort((a, b) => a.week_number - b.week_number)

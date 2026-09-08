@@ -438,7 +438,8 @@ export function CommissionerTools({
           {syncingWeeks ? 'Syncing…' : 'Sync weeks from ESPN'}
         </button>
         <p className="mt-2 text-xs text-zinc-500">
-          Pulls the {seasonYear} NFL schedule and applies current budget settings.
+          Pulls the {seasonYear} NFL schedule and applies current budget settings. Weekly windows
+          close at the first Saturday or Sunday kickoff (mid-week games stay open).
         </p>
       </div>
 
