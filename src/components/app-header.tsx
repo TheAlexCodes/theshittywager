@@ -26,6 +26,7 @@ export function AppHeader() {
 
   const links = [
     { href: '/', label: 'League' },
+    { href: '/futures', label: 'Futures' },
     { href: '/profile', label: 'Profile' },
     ...(canManageActiveLeague ? [{ href: '/admin', label: 'Admin' }] : []),
   ]

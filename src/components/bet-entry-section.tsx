@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import type { AppliedBetScan, ScannedBetSlip } from '@/lib/bet-slip-scan'
 import { BetSlipScanner } from '@/components/bet-slip-scanner'
+import { BetStatusBadge } from '@/components/bet-status-badge'
 import type { Bet, Future, Week } from '@/lib/database.types'
 import {
   americanOddsPayout,
@@ -372,19 +373,7 @@ export function BetEntrySection({
                       <p className="truncate font-semibold">{bet.selection}</p>
                       {meta && <p className="text-xs text-zinc-500">{meta}</p>}
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                        bet.status === 'pending'
-                          ? 'bg-yellow-500/10 text-yellow-400'
-                          : bet.status === 'won'
-                            ? 'bg-green-500/10 text-green-400'
-                            : bet.status === 'lost'
-                              ? 'bg-red-500/10 text-red-400'
-                              : 'bg-zinc-800 text-zinc-400'
-                      }`}
-                    >
-                      {bet.status ?? 'pending'}
-                    </span>
+                    <BetStatusBadge status={bet.status} />
                   </div>
                   <p className="mt-2 text-sm text-zinc-400">
                     {formatMoney(bet.stake ?? 0)} at{' '}

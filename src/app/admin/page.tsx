@@ -81,7 +81,7 @@ export default function AdminPage() {
         <div className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">Admin</p>
           <p className="mt-1 text-sm text-zinc-400">
-            Commissioner controls for players, budgets, invites, schedule sync, and bet settlement.
+            Commissioner controls for players, budgets, invites, schedule sync, and separate weekly/futures settlement.
           </p>
         </div>
 
