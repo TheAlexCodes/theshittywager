@@ -6,6 +6,7 @@ import { DeleteLeagueSection } from '@/components/delete-league-section'
 import { FuturesWindowControls } from '@/components/futures-window-controls'
 import { LeagueRosterManager } from '@/components/league-roster-manager'
 import { PendingBetSettlement } from '@/components/pending-bet-settlement'
+import { WeeklyWindowExtension } from '@/components/weekly-window-extension'
 import { supabase } from '@/lib/supabase'
 
 const inputClassName =
@@ -442,6 +443,15 @@ export function CommissionerTools({
           close at the first Saturday or Sunday kickoff (mid-week games stay open).
         </p>
       </div>
+
+      <WeeklyWindowExtension
+        leagueId={leagueId}
+        weeks={weeks}
+        onUpdated={() => {
+          loadTools()
+          onUpdated()
+        }}
+      />
 
       <div className="pt-5">
         <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-zinc-400">

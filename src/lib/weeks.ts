@@ -72,18 +72,38 @@ export interface ActiveBettingPeriod {
 }
 
 export function getWeeklyWindowClosesAt(weeks: Week[], currentWeek: Week): Date | null {
-  if (currentWeek.betting_closes_at) {
-    return new Date(currentWeek.betting_closes_at)
+  return getEffectiveWeeklyCloseAt(weeks, currentWeek)
+}
+
+export function getEffectiveWeeklyCloseAt(weeks: Week[], week: Week): Date | null {
+  if (week.betting_closes_at) {
+    return new Date(week.betting_closes_at)
   }
 
   const sorted = [...weeks]
-    .filter((week) => week.phase !== 'futures')
+    .filter((item) => item.phase !== 'futures')
     .sort((a, b) => a.week_number - b.week_number)
 
-  const index = sorted.findIndex((week) => week.id === currentWeek.id)
+  const index = sorted.findIndex((item) => item.id === week.id)
   const nextWeek = index >= 0 ? sorted[index + 1] : undefined
 
   return nextWeek ? new Date(nextWeek.reveal_at) : null
+}
+
+export function extendWeeklyCloseAt(
+  weeks: Week[],
+  week: Week,
+  hours: number
+): Date {
+  const effectiveClose = getEffectiveWeeklyCloseAt(weeks, week)
+  const now = new Date()
+  let base = effectiveClose ?? now
+
+  if (base.getTime() < now.getTime()) {
+    base = now
+  }
+
+  return new Date(base.getTime() + hours * 60 * 60 * 1000)
 }
 
 export function getFuturesWindowClosesAt(
