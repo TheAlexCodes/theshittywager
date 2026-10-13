@@ -26,6 +26,42 @@ interface CommissionerToolsProps {
 
 type PendingBet = (Bet & { kind: 'bet'; label: string }) | (Future & { kind: 'future'; label: string })
 
+function buildPendingBets(
+  bets: Bet[],
+  futures: Future[],
+  profilesById: Map<string, string>,
+  weeksById: Map<number, Week>
+): PendingBet[] {
+  const pending: PendingBet[] = []
+
+  for (const bet of bets) {
+    const displayName = profilesById.get(bet.player_id) ?? 'Player'
+    const week = bet.week_id ? weeksById.get(bet.week_id) : null
+    const weekLabel = week
+      ? week.phase === 'playoff'
+        ? `Playoff R${week.week_number - 18}`
+        : `Week ${week.week_number}`
+      : 'Weekly'
+
+    pending.push({
+      ...bet,
+      kind: 'bet',
+      label: `${displayName} · ${weekLabel}`,
+    })
+  }
+
+  for (const future of futures) {
+    const displayName = profilesById.get(future.player_id) ?? 'Player'
+    pending.push({
+      ...future,
+      kind: 'future',
+      label: `${displayName} · Futures`,
+    })
+  }
+
+  return pending
+}
+
 export function CommissionerTools({
   leagueId,
   leagueName,
@@ -49,6 +85,41 @@ export function CommissionerTools({
   const [generatingInvite, setGeneratingInvite] = useState(false)
   const [settlingId, setSettlingId] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const reloadPendingBets = useCallback(async () => {
+    const [betsResult, futuresResult, profilesResult, weeksResult] = await Promise.all([
+      supabase
+        .from('bets')
+        .select('*')
+        .eq('league_id', leagueId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('futures')
+        .select('*')
+        .eq('league_id', leagueId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id, display_name'),
+      supabase.from('weeks').select('*').eq('league_id', leagueId).order('week_number'),
+    ])
+
+    const profilesById = new Map(
+      (profilesResult.data ?? []).map((profile) => [profile.id, profile.display_name])
+    )
+    const weeksById = new Map(
+      (weeksResult.data ?? []).map((week) => [week.id, week])
+    )
+
+    setPendingBets(
+      buildPendingBets(
+        betsResult.data ?? [],
+        futuresResult.data ?? [],
+        profilesById,
+        weeksById
+      )
+    )
+  }, [leagueId])
 
   const loadTools = useCallback(async () => {
     setLoading(true)
@@ -97,34 +168,14 @@ export function CommissionerTools({
       setSeasonYear(String(settingsResult.data.season_year))
     }
 
-    const pending: PendingBet[] = []
-
-    for (const bet of betsResult.data ?? []) {
-      const displayName = profilesById.get(bet.player_id) ?? 'Player'
-      const week = bet.week_id ? weeksById.get(bet.week_id) : null
-      const weekLabel = week
-        ? week.phase === 'playoff'
-          ? `Playoff R${week.week_number - 18}`
-          : `Week ${week.week_number}`
-        : 'Weekly'
-
-      pending.push({
-        ...bet,
-        kind: 'bet',
-        label: `${displayName} · ${weekLabel}`,
-      })
-    }
-
-    for (const future of futuresResult.data ?? []) {
-      const displayName = profilesById.get(future.player_id) ?? 'Player'
-      pending.push({
-        ...future,
-        kind: 'future',
-        label: `${displayName} · Futures`,
-      })
-    }
-
-    setPendingBets(pending)
+    setPendingBets(
+      buildPendingBets(
+        betsResult.data ?? [],
+        futuresResult.data ?? [],
+        profilesById,
+        weeksById
+      )
+    )
     setMemberCount(membersResult.count ?? 0)
     setWeeks(weeksResult.data ?? [])
 
@@ -213,23 +264,46 @@ export function CommissionerTools({
 
   async function settleBet(
     bet: PendingBet,
-    status: 'won' | 'lost' | 'push' | 'void'
+    status: 'won' | 'lost' | 'push' | 'void',
+    americanOdds: number | null
   ) {
     setMessage(null)
-    setSettlingId(`${bet.kind}-${bet.id}`)
+
+    const effectiveOdds = americanOdds ?? bet.american_odds
+
+    if (status === 'won' && effectiveOdds === null) {
+      setMessage({
+        type: 'error',
+        text: 'Enter valid American odds before marking a bet as won.',
+      })
+      return
+    }
+
+    const betKey = `${bet.kind}-${bet.id}`
+    setSettlingId(betKey)
 
     const table = bet.kind === 'bet' ? 'bets' : 'futures'
-    const { error } = await supabase.from(table).update({ status }).eq('id', bet.id)
+    const payload: { status: typeof status; american_odds?: number } = { status }
+
+    if (effectiveOdds !== null && effectiveOdds !== bet.american_odds) {
+      payload.american_odds = effectiveOdds
+    }
+
+    const { error } = await supabase.from(table).update(payload).eq('id', bet.id)
 
     setSettlingId(null)
 
     if (error) {
       setMessage({ type: 'error', text: error.message })
+      await reloadPendingBets()
       return
     }
 
+    setPendingBets((previous) =>
+      previous.filter((item) => `${item.kind}-${item.id}` !== betKey)
+    )
     setMessage({ type: 'success', text: `Marked ${bet.selection} as ${status}.` })
-    await loadTools()
+    void reloadPendingBets()
     onUpdated()
   }
 

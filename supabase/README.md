@@ -99,6 +99,8 @@ Run migration **`011_futures_window.sql`** to let commissioners set custom futur
 
 Run migration **`012_weekly_betting_closes.sql`** so weekly windows close at the first weekend kickoff. Re-sync weeks from ESPN after applying.
 
+Run migration **`013_commissioner_settlement_odds.sql`** so commissioners can adjust American odds when settling a bet (e.g. parlay with a push).
+
 ## Access levels
 
 | Role | Scope |
