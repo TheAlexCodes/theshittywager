@@ -1,7 +1,7 @@
 import type { WeekPhase } from '@/lib/database.types'
 import {
   BETTING_OPENS_DAYS_BEFORE,
-  bettingClosesAtFromKickoffs,
+  bettingClosesAtForWeek,
   bettingOpensAt,
 } from '@/lib/nfl-schedule'
 
@@ -69,9 +69,10 @@ function buildWeekRow(
   weekNumber: number,
   phase: WeekPhase,
   allowance: number,
-  result: EspnWeekResult
+  result: EspnWeekResult,
+  nextWeekOpensAt: Date | null
 ): EspnWeekRow {
-  const closesAt = bettingClosesAtFromKickoffs(result.kickoffs)
+  const closesAt = bettingClosesAtForWeek(result.kickoffs, nextWeekOpensAt)
 
   return {
     league_id: leagueId,
@@ -88,19 +89,15 @@ export async function buildWeeksFromEspn(
   allowances: LeagueAllowances,
   leagueId: string
 ): Promise<EspnWeekRow[]> {
-  const rows: EspnWeekRow[] = []
-  const regularWeeks: EspnWeekResult[] = []
+  const regularResults: Array<{ weekNumber: number; result: EspnWeekResult }> = []
 
   for (let week = 1; week <= 18; week += 1) {
     const result = await fetchEspnWeek(2, week, year)
     if (!result) continue
-
-    regularWeeks.push(result)
-    rows.push(
-      buildWeekRow(leagueId, week, 'regular', allowances.weekly_allowance, result)
-    )
+    regularResults.push({ weekNumber: week, result })
   }
 
+  const playoffResults: Array<{ weekNumber: number; result: EspnWeekResult }> = []
   const playoffMap = [
     { espnWeek: 1, week_number: 19 },
     { espnWeek: 2, week_number: 20 },
@@ -110,13 +107,33 @@ export async function buildWeeksFromEspn(
   for (const round of playoffMap) {
     const result = await fetchEspnWeek(3, round.espnWeek, year)
     if (!result) continue
-
-    rows.push(
-      buildWeekRow(leagueId, round.week_number, 'playoff', allowances.playoff_allowance, result)
-    )
+    playoffResults.push({ weekNumber: round.week_number, result })
   }
 
-  const firstRegularGame = regularWeeks[0]?.firstKickoff
+  const bettingRows = [...regularResults, ...playoffResults].sort(
+    (a, b) => a.weekNumber - b.weekNumber
+  )
+
+  const rows: EspnWeekRow[] = bettingRows.map((entry, index) => {
+    const nextOpens = bettingRows[index + 1]
+      ? bettingOpensAt(bettingRows[index + 1].result.firstKickoff)
+      : null
+    const phase: WeekPhase =
+      entry.weekNumber >= 19 ? 'playoff' : 'regular'
+    const allowance =
+      phase === 'playoff' ? allowances.playoff_allowance : allowances.weekly_allowance
+
+    return buildWeekRow(
+      leagueId,
+      entry.weekNumber,
+      phase,
+      allowance,
+      entry.result,
+      nextOpens
+    )
+  })
+
+  const firstRegularGame = regularResults[0]?.result.firstKickoff
   const futuresOpens = firstRegularGame
     ? new Date(firstRegularGame.getTime() - 90 * 24 * 60 * 60 * 1000)
     : new Date(`${year}-06-01T17:00:00Z`)

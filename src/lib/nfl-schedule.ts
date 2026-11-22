@@ -32,3 +32,16 @@ export function bettingOpensAt(firstKickoff: Date): Date {
   opens.setUTCHours(17, 0, 0, 0)
   return opens
 }
+
+/** Single active week: close when the next week's board opens or at the weekend kickoff, whichever is earlier. */
+export function bettingClosesAtForWeek(
+  kickoffs: Date[],
+  nextWeekOpensAt: Date | null
+): Date | null {
+  const weekendClose = bettingClosesAtFromKickoffs(kickoffs)
+
+  if (!weekendClose) return nextWeekOpensAt
+  if (!nextWeekOpensAt) return weekendClose
+
+  return weekendClose.getTime() <= nextWeekOpensAt.getTime() ? weekendClose : nextWeekOpensAt
+}

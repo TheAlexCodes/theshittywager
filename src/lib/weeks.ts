@@ -35,16 +35,33 @@ export function isWeekOpen(week: Week): boolean {
   return isWeekBettingOpen(week)
 }
 
-export function isWeekBettingOpen(week: Week): boolean {
+export function sortedBettingWeeks(weeks: Week[]): Week[] {
+  return [...weeks]
+    .filter((week) => week.phase !== 'futures')
+    .sort((a, b) => a.week_number - b.week_number)
+}
+
+function isClosedBecauseNextWeekOpened(week: Week, weeks: Week[]): boolean {
+  const sorted = sortedBettingWeeks(weeks)
+  const index = sorted.findIndex((item) => item.id === week.id)
+  const nextWeek = index >= 0 ? sorted[index + 1] : undefined
+  if (!nextWeek) return false
+  return new Date(nextWeek.reveal_at) <= new Date()
+}
+
+export function isWeekBettingOpen(week: Week, weeks?: Week[]): boolean {
+  if (week.phase === 'futures') return false
+
   const now = new Date()
   if (new Date(week.reveal_at) > now) return false
   if (week.betting_closes_at && new Date(week.betting_closes_at) <= now) return false
+  if (weeks && isClosedBecauseNextWeekOpened(week, weeks)) return false
   return true
 }
 
 export function getCurrentBettingWeek(weeks: Week[]): Week | null {
   const openWeeks = weeks
-    .filter((week) => week.phase !== 'futures' && isWeekBettingOpen(week))
+    .filter((week) => week.phase !== 'futures' && isWeekBettingOpen(week, weeks))
     .sort(
       (a, b) =>
         new Date(b.reveal_at).getTime() - new Date(a.reveal_at).getTime() ||
@@ -76,18 +93,18 @@ export function getWeeklyWindowClosesAt(weeks: Week[], currentWeek: Week): Date 
 }
 
 export function getEffectiveWeeklyCloseAt(weeks: Week[], week: Week): Date | null {
-  if (week.betting_closes_at) {
-    return new Date(week.betting_closes_at)
-  }
-
-  const sorted = [...weeks]
-    .filter((item) => item.phase !== 'futures')
-    .sort((a, b) => a.week_number - b.week_number)
-
+  const sorted = sortedBettingWeeks(weeks)
   const index = sorted.findIndex((item) => item.id === week.id)
   const nextWeek = index >= 0 ? sorted[index + 1] : undefined
+  const nextWeekOpens = nextWeek ? new Date(nextWeek.reveal_at) : null
 
-  return nextWeek ? new Date(nextWeek.reveal_at) : null
+  if (week.betting_closes_at) {
+    const stored = new Date(week.betting_closes_at)
+    if (!nextWeekOpens) return stored
+    return stored.getTime() <= nextWeekOpens.getTime() ? stored : nextWeekOpens
+  }
+
+  return nextWeekOpens
 }
 
 export function extendWeeklyCloseAt(

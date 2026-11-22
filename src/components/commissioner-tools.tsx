@@ -514,7 +514,7 @@ export function CommissionerTools({
         </button>
         <p className="mt-2 text-xs text-zinc-500">
           Pulls the {seasonYear} NFL schedule and applies current budget settings. Weekly windows
-          close at the first Saturday or Sunday kickoff (mid-week games stay open).
+          close at the first weekend kickoff or when the next week&apos;s board opens, whichever comes first.
         </p>
       </div>
 

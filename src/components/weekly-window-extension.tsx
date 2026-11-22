@@ -128,7 +128,7 @@ export function WeeklyWindowExtension({
             {bettingWeeks.map((week) => (
               <option key={week.id} value={week.id}>
                 {formatWeekLabel(week)}
-                {isWeekBettingOpen(week) ? ' · Open' : ' · Closed'}
+                {isWeekBettingOpen(week, weeks) ? ' · Open' : ' · Closed'}
               </option>
             ))}
           </select>

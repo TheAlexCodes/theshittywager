@@ -101,6 +101,8 @@ Run migration **`012_weekly_betting_closes.sql`** so weekly windows close at the
 
 Run migration **`013_commissioner_settlement_odds.sql`** so commissioners can adjust American odds when settling a bet (e.g. parlay with a push).
 
+Run migration **`014_single_weekly_betting_window.sql`** so a week closes when the next week's board opens (only one weekly window at a time). Re-sync weeks from ESPN after applying.
+
 ## Access levels
 
 | Role | Scope |
