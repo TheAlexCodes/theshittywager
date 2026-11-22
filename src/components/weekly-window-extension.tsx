@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
-import type { Week } from '@/lib/database.types'
+import type { LeagueSettings, Week } from '@/lib/database.types'
 import { formatWindowCloseDate } from '@/lib/time'
 import {
   extendWeeklyCloseAt,
@@ -9,6 +9,7 @@ import {
   getCurrentBettingWeek,
   getEffectiveWeeklyCloseAt,
   isWeekBettingOpen,
+  toLeagueBettingWindowSettings,
 } from '@/lib/weeks'
 import { supabase } from '@/lib/supabase'
 
@@ -21,14 +22,17 @@ const labelClassName =
 interface WeeklyWindowExtensionProps {
   leagueId: string
   weeks: Week[]
+  settings?: LeagueSettings | null
   onUpdated: () => void
 }
 
 export function WeeklyWindowExtension({
   leagueId,
   weeks,
+  settings,
   onUpdated,
 }: WeeklyWindowExtensionProps) {
+  const windowSettings = toLeagueBettingWindowSettings(settings ?? null)
   const bettingWeeks = useMemo(
     () =>
       [...weeks]
@@ -38,7 +42,7 @@ export function WeeklyWindowExtension({
   )
 
   const defaultWeekId = useMemo(() => {
-    const current = getCurrentBettingWeek(weeks)
+    const current = getCurrentBettingWeek(weeks, windowSettings)
     if (current) return String(current.id)
 
     const latestOpened = [...bettingWeeks]
@@ -46,7 +50,7 @@ export function WeeklyWindowExtension({
       .sort((a, b) => b.week_number - a.week_number)[0]
 
     return latestOpened ? String(latestOpened.id) : ''
-  }, [bettingWeeks, weeks])
+  }, [bettingWeeks, weeks, windowSettings])
 
   const [selectedWeekId, setSelectedWeekId] = useState('')
   const [extendHours, setExtendHours] = useState('2')
@@ -128,7 +132,7 @@ export function WeeklyWindowExtension({
             {bettingWeeks.map((week) => (
               <option key={week.id} value={week.id}>
                 {formatWeekLabel(week)}
-                {isWeekBettingOpen(week, weeks) ? ' · Open' : ' · Closed'}
+                {isWeekBettingOpen(week, weeks, windowSettings) ? ' · Open' : ' · Closed'}
               </option>
             ))}
           </select>

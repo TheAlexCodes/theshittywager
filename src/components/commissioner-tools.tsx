@@ -6,6 +6,7 @@ import { DeleteLeagueSection } from '@/components/delete-league-section'
 import { FuturesWindowControls } from '@/components/futures-window-controls'
 import { LeagueRosterManager } from '@/components/league-roster-manager'
 import { PendingBetSettlement } from '@/components/pending-bet-settlement'
+import { ManualBettingWeekControls } from '@/components/manual-betting-week-controls'
 import { WeeklyWindowExtension } from '@/components/weekly-window-extension'
 import { supabase } from '@/lib/supabase'
 
@@ -518,9 +519,22 @@ export function CommissionerTools({
         </p>
       </div>
 
+      {settings && (
+        <ManualBettingWeekControls
+          leagueId={leagueId}
+          settings={settings}
+          weeks={weeks}
+          onUpdated={() => {
+            loadTools()
+            onUpdated()
+          }}
+        />
+      )}
+
       <WeeklyWindowExtension
         leagueId={leagueId}
         weeks={weeks}
+        settings={settings}
         onUpdated={() => {
           loadTools()
           onUpdated()

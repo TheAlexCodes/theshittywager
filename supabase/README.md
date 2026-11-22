@@ -103,6 +103,8 @@ Run migration **`013_commissioner_settlement_odds.sql`** so commissioners can ad
 
 Run migration **`014_single_weekly_betting_window.sql`** so a week closes when the next week's board opens (only one weekly window at a time). Re-sync weeks from ESPN after applying.
 
+Run migration **`015_manual_betting_week.sql`** so commissioners can manually choose which weekly board is open (including past weeks).
+
 ## Access levels
 
 | Role | Scope |

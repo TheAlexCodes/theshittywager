@@ -140,6 +140,7 @@ export interface Database {
           season_year: number
           futures_opens_at: string | null
           futures_closes_at: string | null
+          manual_betting_week_id: number | null
           updated_at: string
         }
         Insert: {
@@ -150,6 +151,7 @@ export interface Database {
           season_year?: number
           futures_opens_at?: string | null
           futures_closes_at?: string | null
+          manual_betting_week_id?: number | null
           updated_at?: string
         }
         Update: {
@@ -159,6 +161,7 @@ export interface Database {
           season_year?: number
           futures_opens_at?: string | null
           futures_closes_at?: string | null
+          manual_betting_week_id?: number | null
           updated_at?: string
         }
         Relationships: [

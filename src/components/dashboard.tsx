@@ -21,6 +21,8 @@ import {
   getActiveBettingPeriod,
   getCurrentBettingWeek,
   getFuturesWeek,
+  isManualWeeklyOverrideActive,
+  toLeagueBettingWindowSettings,
 } from '@/lib/weeks'
 
 interface DashboardProps {
@@ -98,12 +100,7 @@ export function Dashboard({ userId }: DashboardProps) {
     }
 
     const leagueWeeks = weeksResult.data
-    const windowSettings = settingsResult.data
-      ? {
-          futures_opens_at: settingsResult.data.futures_opens_at,
-          futures_closes_at: settingsResult.data.futures_closes_at,
-        }
-      : null
+    const windowSettings = toLeagueBettingWindowSettings(settingsResult.data)
     const activePeriod = getActiveBettingPeriod(leagueWeeks, windowSettings)
     let stakedByPlayer: Record<string, number> = {}
 
@@ -153,16 +150,12 @@ export function Dashboard({ userId }: DashboardProps) {
     }
   }, [loadDashboard, leagueLoading])
 
-  const futuresWindowSettings = leagueSettings
-    ? {
-        futures_opens_at: leagueSettings.futures_opens_at,
-        futures_closes_at: leagueSettings.futures_closes_at,
-      }
-    : null
-  const currentWeek = getCurrentBettingWeek(weeks)
+  const windowSettings = toLeagueBettingWindowSettings(leagueSettings)
+  const currentWeek = getCurrentBettingWeek(weeks, windowSettings)
   const futuresWeek = getFuturesWeek(weeks)
-  const futuresLocked = futuresIsLocked(weeks, futuresWindowSettings)
-  const activePeriod = getActiveBettingPeriod(weeks, futuresWindowSettings)
+  const futuresLocked = futuresIsLocked(weeks, windowSettings)
+  const activePeriod = getActiveBettingPeriod(weeks, windowSettings)
+  const manualWeeklyOverride = isManualWeeklyOverrideActive(windowSettings)
   const leader = standings[0]
   const bankroll = activeMembership?.bankroll ?? 0
 
@@ -255,6 +248,11 @@ export function Dashboard({ userId }: DashboardProps) {
           {currentWeek ? (
             <div className="mt-2">
               <p className="text-lg font-bold">{formatWeekLabel(currentWeek)}</p>
+              {manualWeeklyOverride && (
+                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-400">
+                  Commissioner opened this week
+                </p>
+              )}
               <p className="text-sm text-zinc-400">{formatPhaseLabel(currentWeek.phase)}</p>
               <p className="mt-2 text-sm text-zinc-300">
                 Weekly allowance:{' '}

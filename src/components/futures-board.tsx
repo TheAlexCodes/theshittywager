@@ -15,7 +15,12 @@ import {
   sumStakes,
 } from '@/lib/odds'
 import { supabase } from '@/lib/supabase'
-import { futuresIsLocked, getCurrentBettingWeek, getFuturesWeek } from '@/lib/weeks'
+import {
+  futuresIsLocked,
+  getCurrentBettingWeek,
+  getFuturesWeek,
+  toLeagueBettingWindowSettings,
+} from '@/lib/weeks'
 
 interface FuturesBoardProps {
   userId: string
@@ -96,16 +101,11 @@ export function FuturesBoard({ userId }: FuturesBoardProps) {
     loadFutures()
   }, [loadFutures])
 
-  const futuresWindowSettings = leagueSettings
-    ? {
-        futures_opens_at: leagueSettings.futures_opens_at,
-        futures_closes_at: leagueSettings.futures_closes_at,
-      }
-    : null
+  const windowSettings = toLeagueBettingWindowSettings(leagueSettings)
   const futuresWeek = getFuturesWeek(weeks)
-  const futuresLocked = futuresIsLocked(weeks, futuresWindowSettings)
-  const futuresWindow = getFuturesWindow(weeks, futuresWindowSettings)
-  const currentWeek = getCurrentBettingWeek(weeks)
+  const futuresLocked = futuresIsLocked(weeks, windowSettings)
+  const futuresWindow = getFuturesWindow(weeks, windowSettings)
+  const currentWeek = getCurrentBettingWeek(weeks, windowSettings)
   const allowance = futuresWeek?.allowance ?? 0
 
   const myFutures = useMemo(

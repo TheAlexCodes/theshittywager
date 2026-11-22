@@ -8,6 +8,45 @@ import {
 export type { FuturesWindowSettings } from '@/lib/futures-window'
 export { getFuturesWindow } from '@/lib/futures-window'
 
+export interface LeagueBettingWindowSettings extends FuturesWindowSettings {
+  manual_betting_week_id?: number | null
+}
+
+export function getManualBettingWeek(
+  weeks: Week[],
+  settings?: LeagueBettingWindowSettings | null
+): Week | null {
+  const manualId = settings?.manual_betting_week_id
+  if (manualId == null) return null
+
+  const week = weeks.find(
+    (item) => item.id === manualId && item.phase !== 'futures'
+  )
+
+  return week ?? null
+}
+
+export function isManualWeeklyOverrideActive(
+  settings?: LeagueBettingWindowSettings | null
+): boolean {
+  return settings?.manual_betting_week_id != null
+}
+
+export function toLeagueBettingWindowSettings(
+  settings: {
+    futures_opens_at?: string | null
+    futures_closes_at?: string | null
+    manual_betting_week_id?: number | null
+  } | null
+): LeagueBettingWindowSettings | null {
+  if (!settings) return null
+  return {
+    futures_opens_at: settings.futures_opens_at,
+    futures_closes_at: settings.futures_closes_at,
+    manual_betting_week_id: settings.manual_betting_week_id,
+  }
+}
+
 export function formatWeekLabel(week: Week): string {
   if (week.phase === 'futures') {
     return 'Futures'
@@ -31,8 +70,12 @@ export function formatPhaseLabel(phase: WeekPhase): string {
   }
 }
 
-export function isWeekOpen(week: Week): boolean {
-  return isWeekBettingOpen(week)
+export function isWeekOpen(
+  week: Week,
+  weeks?: Week[],
+  settings?: LeagueBettingWindowSettings | null
+): boolean {
+  return isWeekBettingOpen(week, weeks, settings)
 }
 
 export function sortedBettingWeeks(weeks: Week[]): Week[] {
@@ -49,8 +92,17 @@ function isClosedBecauseNextWeekOpened(week: Week, weeks: Week[]): boolean {
   return new Date(nextWeek.reveal_at) <= new Date()
 }
 
-export function isWeekBettingOpen(week: Week, weeks?: Week[]): boolean {
+export function isWeekBettingOpen(
+  week: Week,
+  weeks?: Week[],
+  settings?: LeagueBettingWindowSettings | null
+): boolean {
   if (week.phase === 'futures') return false
+
+  const manualWeek = getManualBettingWeek(weeks ?? [], settings)
+  if (manualWeek) {
+    return week.id === manualWeek.id
+  }
 
   const now = new Date()
   if (new Date(week.reveal_at) > now) return false
@@ -59,9 +111,15 @@ export function isWeekBettingOpen(week: Week, weeks?: Week[]): boolean {
   return true
 }
 
-export function getCurrentBettingWeek(weeks: Week[]): Week | null {
+export function getCurrentBettingWeek(
+  weeks: Week[],
+  settings?: LeagueBettingWindowSettings | null
+): Week | null {
+  const manualWeek = getManualBettingWeek(weeks, settings)
+  if (manualWeek) return manualWeek
+
   const openWeeks = weeks
-    .filter((week) => week.phase !== 'futures' && isWeekBettingOpen(week, weeks))
+    .filter((week) => week.phase !== 'futures' && isWeekBettingOpen(week, weeks, settings))
     .sort(
       (a, b) =>
         new Date(b.reveal_at).getTime() - new Date(a.reveal_at).getTime() ||
@@ -132,9 +190,9 @@ export function getFuturesWindowClosesAt(
 
 export function getActiveBettingPeriod(
   weeks: Week[],
-  settings?: FuturesWindowSettings | null
+  settings?: LeagueBettingWindowSettings | null
 ): ActiveBettingPeriod | null {
-  const currentWeek = getCurrentBettingWeek(weeks)
+  const currentWeek = getCurrentBettingWeek(weeks, settings)
   if (currentWeek) {
     return {
       mode: 'weekly',
